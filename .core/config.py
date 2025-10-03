@@ -13,7 +13,7 @@ TEMP_DIR = CORE_DIR / ".temp"
 MODELS_DIR = ROOT_DIR / "models"
 
 DEFAULT_TEMPERATURE = float(os.getenv("AUTO_TEST_TEMPERATURE", "0.1"))
-DEFAULT_PROVIDER_NAME = os.getenv("AUTO_TEST_PROVIDER", "LM Studio")
+DEFAULT_PROVIDER_NAME = os.getenv("AUTO_TEST_PROVIDER", "Local Engine")
 
 
 def ensure_directories() -> None:

@@ -36,6 +36,151 @@ def open_path(path: Path) -> None:
 
 
 class App(tk.Tk):
+    def open_settings_dialog(self):
+        try:
+            from settings_dialog import SettingsDialog
+        except ImportError:
+            messagebox.showerror("Error", "Settings dialog module not found.")
+            return
+        SettingsDialog(self)
+    def open_prompt_playground(self):
+        try:
+            from prompt_playground import PlaygroundDialog
+        except ImportError:
+            messagebox.showerror("Error", "Prompt playground module not found.")
+            return
+        def send_callback(prompt):
+            provider_name = self.provider_var.get()
+            model_display = self.model_var.get()
+            if not provider_name or not model_display:
+                return "Please select a provider and model."
+            try:
+                provider = get_provider(provider_name, **self._provider_kwargs(provider_name))
+                model_id = self._model_id_for_display(model_display)
+                if not model_id:
+                    return "Model not found."
+                # Use temperature from the GUI
+                response = provider.run_inference(model_id, prompt, temperature=self.temperature_var.get())
+                return response
+            except Exception as e:
+                return f"Error: {e}"
+        PlaygroundDialog(self, send_callback)
+    def load_plugins(self):
+        try:
+            from plugin_system import PluginManager
+            self.plugin_manager = PluginManager()
+            self.plugin_manager.run_hook('on_app_start', self)
+        except Exception as e:
+            print(f"Plugin system error: {e}")
+    def open_results_chart(self):
+        try:
+            from results_chart import ResultsChartDialog
+        except ImportError:
+            messagebox.showerror("Error", "Results chart module not found.")
+            return
+        # Find the latest report
+        if not RESULTS_DIR.exists():
+            messagebox.showinfo("No Reports", "The results directory does not exist yet.")
+            return
+        reports = list(RESULTS_DIR.glob("*.md"))
+        if not reports:
+            messagebox.showinfo("No Reports", "No markdown reports found yet.")
+            return
+        latest_report = max(reports, key=lambda p: p.stat().st_mtime)
+        ResultsChartDialog(self, latest_report)
+    def open_diff_viewer(self):
+        try:
+            from diff_viewer import DiffViewerDialog
+        except ImportError:
+            messagebox.showerror("Error", "Diff viewer module not found.")
+            return
+        # Try to get the last test's expected and actual output from the log or a result file
+        # For now, just prompt the user for both (can be improved to auto-load from last run)
+        expected = ""
+        actual = ""
+        def get_text(title):
+            d = tk.Toplevel(self)
+            d.title(title)
+            d.geometry("600x400")
+            t = tk.Text(d, wrap="word")
+            t.pack(fill="both", expand=True)
+            result = {}
+            def ok():
+                result['text'] = t.get("1.0", "end-1c")
+                d.destroy()
+            ttk.Button(d, text="OK", command=ok).pack()
+            self.wait_window(d)
+            return result.get('text', "")
+        expected = get_text("Paste Expected Output")
+        actual = get_text("Paste Actual Output")
+        if expected and actual:
+            DiffViewerDialog(self, expected, actual)
+        else:
+            messagebox.showinfo("Diff Viewer", "Both expected and actual output are required.")
+    def configure_model_paths(self) -> None:
+        dialog = tk.Toplevel(self)
+        dialog.title("Configure Model Paths")
+        dialog.geometry("520x320")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        paths: List[str] = get_local_model_paths()
+
+        listbox = tk.Listbox(dialog, selectmode=tk.SINGLE, width=60, height=10)
+        for entry in paths:
+            listbox.insert("end", entry)
+        listbox.pack(fill="both", expand=True, padx=12, pady=(12, 6))
+
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill="x", padx=12, pady=6)
+
+        def add_path() -> None:
+            selection = filedialog.askdirectory(parent=dialog)
+            if selection and selection not in paths:
+                paths.append(selection)
+                listbox.insert("end", selection)
+
+        def remove_path() -> None:
+            selection = listbox.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            listbox.delete(index)
+            paths.pop(index)
+
+        ttk.Button(button_frame, text="Add Path", command=add_path).pack(side="left", padx=(0, 8))
+        ttk.Button(button_frame, text="Remove Selected", command=remove_path).pack(side="left")
+        ttk.Button(button_frame, text="Save", command=lambda: (set_local_model_paths(paths), dialog.destroy())).pack(side="right")
+    def open_test_editor(self):
+        try:
+            from test_editor import TestEditorDialog
+        except ImportError:
+            messagebox.showerror("Error", "Test editor module not found.")
+            return
+        TestEditorDialog(self, TESTS_DIR)
+
+    def open_latest_report(self) -> None:
+        if not RESULTS_DIR.exists():
+            messagebox.showinfo("No Reports", "The results directory does not exist yet.")
+            return
+        reports = list(RESULTS_DIR.glob("*.md"))
+        if not reports:
+            messagebox.showinfo("No Reports", "No markdown reports found yet.")
+            return
+        latest_report = max(reports, key=lambda p: p.stat().st_mtime)
+        open_path(latest_report)
+        self._append_log(f"Opened latest report: {latest_report.name}")
+    def open_model_downloader(self):
+        try:
+            from model_downloader import DownloadModelDialog
+        except ImportError:
+            messagebox.showerror("Error", "Model downloader module not found.")
+            return
+        paths = get_local_model_paths()
+        import os
+        model_dir = Path(paths[0]).expanduser() if paths else (Path(os.getcwd()) / "models")
+        model_dir.mkdir(parents=True, exist_ok=True)
+        DownloadModelDialog(self, model_dir)
     def __init__(self) -> None:
         super().__init__()
         self.title("LLM Automated Test Console")
@@ -52,6 +197,8 @@ class App(tk.Tk):
 
         self.available_models: List[Tuple[str, str]] = []  # (id, display name)
         self.running = False
+
+        self.load_plugins()
 
         self._build_ui()
         self._build_menu()
@@ -102,6 +249,12 @@ class App(tk.Tk):
         self.run_button.pack(side="left")
 
         ttk.Button(button_frame, text="Refresh Models", command=self.fetch_models_async).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="New Test", command=self.open_test_editor).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="Compare Outputs", command=self.open_diff_viewer).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="View Results Chart", command=self.open_results_chart).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="Prompt Playground", command=self.open_prompt_playground).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="Settings", command=self.open_settings_dialog).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="Download Model", command=self.open_model_downloader).pack(side="left", padx=(12, 0))
         ttk.Button(button_frame, text="Edit Tests", command=lambda: open_path(TESTS_DIR)).pack(side="left", padx=(12, 0))
         ttk.Button(button_frame, text="Open Results", command=lambda: open_path(RESULTS_DIR)).pack(side="left", padx=(12, 0))
         ttk.Button(button_frame, text="View Latest Report", command=self.open_latest_report).pack(side="left", padx=(12, 0))
@@ -115,7 +268,7 @@ class App(tk.Tk):
     def _build_menu(self) -> None:
         menubar = tk.Menu(self)
         settings_menu = tk.Menu(menubar, tearoff=0)
-        settings_menu.add_command(label="Configure Model Paths…", command=self.configure_model_paths)
+        settings_menu.add_command(label="Settings…", command=self.open_settings_dialog)
         menubar.add_cascade(label="Settings", menu=settings_menu)
         self.config(menu=menubar)
         self._settings_menu = settings_menu
@@ -148,6 +301,13 @@ class App(tk.Tk):
         model_pairs = [(model.id, model.display_name) for model in models]
         self.after(0, lambda: self._on_models_loaded(model_pairs))
 
+    def open_test_editor(self):
+        try:
+            from test_editor import TestEditorDialog
+        except ImportError:
+            messagebox.showerror("Error", "Test editor module not found.")
+            return
+        TestEditorDialog(self, TESTS_DIR)
     def _on_model_fetch_error(self, message: str) -> None:
         self._set_status("Model fetch failed")
         messagebox.showerror("Model Load Error", message)
@@ -267,61 +427,61 @@ class App(tk.Tk):
             return {"search_paths": [path for path in custom_paths if path]}
         return {}
 
-    def configure_model_paths(self) -> None:
-        dialog = tk.Toplevel(self)
-        dialog.title("Configure Model Paths")
-        dialog.geometry("520x320")
-        dialog.transient(self)
-        dialog.grab_set()
+    def _build_ui(self) -> None:
+        padding = {"padx": 12, "pady": 8}
 
-        paths: List[str] = get_local_model_paths()
+        header = ttk.Label(self, text="Automated Diagnostic Test Runner", font=("Helvetica", 18, "bold"))
+        header.pack(anchor="w", **padding)
 
-        listbox = tk.Listbox(dialog, selectmode=tk.SINGLE, width=60, height=10)
-        for entry in paths:
-            listbox.insert("end", entry)
-        listbox.pack(fill="both", expand=True, padx=12, pady=(12, 6))
+        form_frame = ttk.Frame(self)
+        form_frame.pack(fill="x", **padding)
 
-        button_frame = ttk.Frame(dialog)
-        button_frame.pack(fill="x", padx=12, pady=6)
+        ttk.Label(form_frame, text="Provider:").grid(row=0, column=0, sticky="w")
+        self.provider_combo = ttk.Combobox(
+            form_frame,
+            textvariable=self.provider_var,
+            values=self.provider_names,
+            state="readonly",
+        )
+        self.provider_combo.grid(row=0, column=1, sticky="ew", padx=(6, 18))
+        self.provider_combo.bind("<<ComboboxSelected>>", lambda event: self.fetch_models_async())
 
-        def add_path() -> None:
-            selection = filedialog.askdirectory(parent=dialog)
-            if selection and selection not in paths:
-                paths.append(selection)
-                listbox.insert("end", selection)
+        ttk.Label(form_frame, text="Model:").grid(row=0, column=2, sticky="w")
+        self.model_combo = ttk.Combobox(form_frame, textvariable=self.model_var, state="readonly")
+        self.model_combo.grid(row=0, column=3, sticky="ew", padx=(6, 18))
 
-        def remove_path() -> None:
-            selection = listbox.curselection()
-            if not selection:
-                return
-            index = selection[0]
-            listbox.delete(index)
-            paths.pop(index)
+        ttk.Label(form_frame, text="Temperature:").grid(row=0, column=4, sticky="w")
+        self.temperature_spin = ttk.Spinbox(
+            form_frame,
+            textvariable=self.temperature_var,
+            from_=0.0,
+            to=1.0,
+            increment=0.05,
+            width=6,
+        )
+        self.temperature_spin.grid(row=0, column=5, sticky="w")
 
-        ttk.Button(button_frame, text="Add…", command=add_path).pack(side="left")
-        ttk.Button(button_frame, text="Remove", command=remove_path).pack(side="left", padx=(8, 0))
+        form_frame.columnconfigure(1, weight=1)
+        form_frame.columnconfigure(3, weight=1)
 
-        action_frame = ttk.Frame(dialog)
-        action_frame.pack(fill="x", padx=12, pady=(0, 12))
+        button_frame = ttk.Frame(self)
+        button_frame.pack(fill="x", **padding)
 
-        def on_save() -> None:
-            normalized = [str(Path(p).expanduser()) for p in paths]
-            set_local_model_paths(normalized)
-            dialog.grab_release()
-            dialog.destroy()
-            if self.provider_var.get() == LocalEngineProvider.name:
-                self.fetch_models_async()
+        self.run_button = ttk.Button(button_frame, text="Run Tests", command=self.start_run)
+        self.run_button.pack(side="left")
 
-        def on_cancel() -> None:
-            dialog.grab_release()
-            dialog.destroy()
+        ttk.Button(button_frame, text="Refresh Models", command=self.fetch_models_async).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="New Test", command=self.open_test_editor).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="Download Model", command=self.open_model_downloader).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="Edit Tests", command=lambda: open_path(TESTS_DIR)).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="Open Results", command=lambda: open_path(RESULTS_DIR)).pack(side="left", padx=(12, 0))
+        ttk.Button(button_frame, text="View Latest Report", command=self.open_latest_report).pack(side="left", padx=(12, 0))
 
-        dialog.protocol("WM_DELETE_WINDOW", on_cancel)
+        ttk.Label(self, textvariable=self.status_var).pack(anchor="w", **padding)
 
-        ttk.Button(action_frame, text="Save", command=on_save).pack(side="right", padx=(8, 0))
-        ttk.Button(action_frame, text="Cancel", command=on_cancel).pack(side="right")
-
-    def open_latest_report(self) -> None:
+        self.log = scrolledtext.ScrolledText(self, wrap="word", height=22)
+        self.log.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        self.log.configure(state="disabled")
         if not RESULTS_DIR.exists():
             messagebox.showinfo("No Reports", "The results directory does not exist yet.")
             return
