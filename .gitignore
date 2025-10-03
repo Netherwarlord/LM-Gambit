@@ -1,0 +1,19 @@
+# Ignore Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore results folder and its contents
+results/
+
+# Ignore virtual environments
+.venv/
+venv/
+ENV/
+
+# Ignore system files
+.DS_Store
+
+# Ignore other build artifacts
+*.egg-info/
