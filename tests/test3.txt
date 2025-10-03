@@ -1,0 +1,23 @@
+I have this old networking code that uses a completion handler. Please refactor it to use modern Swift Concurrency with async/await.
+
+The new function should be marked with `async throws` and return a `[Post]` object upon success. Also, include an example of how to call this new async function inside a `Task` with a `do-catch` block.
+
+**Old Code:**
+struct Post: Codable {
+    let id: Int
+    let title: String
+}
+
+func fetchPosts(completion: @escaping (Result<[Post], Error>) -> Void) {
+    guard let url = URL(string: "https://api.example.com/posts") else { return }
+    URLSession.shared.dataTask(with: url) { data, _, error in
+        if let error = error { completion(.failure(error)); return }
+        guard let data = data else { return }
+        do {
+            let posts = try JSONDecoder().decode([Post].self, from: data)
+            completion(.success(posts))
+        } catch {
+            completion(.failure(error))
+        }
+    }.resume()
+}

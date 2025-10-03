@@ -1,0 +1,5 @@
+Create a complete SwiftData example for a macOS 26 app.
+
+You must define two models: `Author` and `Book`. An `Author` can have many `Book`s (a one-to-many relationship).
+
+Then, create a SwiftUI view that displays a list of all authors. When an author's name is tapped, it should navigate to a detail view that shows a list of all the books written by that specific author. Use a SwiftData `@Query` to fetch the data.

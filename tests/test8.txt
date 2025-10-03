@@ -1,0 +1,1 @@
+Create the code for a simple, configurable WidgetKit widget for iOS 26. The widget should display a single "Note" string. The configuration logic must use the modern App Intents framework, allowing the user to edit the note's text directly from the widget's configuration screen. Do not use the old `INIntent` based system.

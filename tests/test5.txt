@@ -1,0 +1,7 @@
+Write a thread-safe counter class in Swift using an `actor`.
+
+The actor should be named `SafeCounter`. It must have a private property to hold the current count and two public methods:
+1. `func increment() async`
+2. `func getCount() async -> Int`
+
+Also, provide a simple example of how to create an instance of the actor and call its methods concurrently from two different `Task`s.

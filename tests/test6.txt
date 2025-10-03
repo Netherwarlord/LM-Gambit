@@ -1,0 +1,9 @@
+Create the code for a simple, non-configurable watchOS 26 complication that displays the current date in the `.accessoryRectangular` family.
+
+The code must include:
+1. A `TimelineProvider` to generate the timeline entries.
+2. A `TimelineEntry` struct.
+3. The main `Widget` struct.
+4. A SwiftUI view for the complication's appearance.
+
+Ensure the code correctly uses the modern WidgetKit framework.

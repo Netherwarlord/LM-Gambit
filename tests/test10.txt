@@ -1,0 +1,5 @@
+Create a custom SwiftUI Layout container called `SimpleFlowLayout`.
+
+This layout should arrange its subviews in a horizontal flow, starting a new row when the current row is full. It should behave similarly to a basic left-aligned flow layout in CSS.
+
+The implementation must conform to the `Layout` protocol and implement both the `sizeThatFits(...)` and `placeSubviews(...)` methods.

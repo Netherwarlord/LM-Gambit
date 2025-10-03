@@ -1,0 +1,10 @@
+Create a complete SwiftUI view for a user profile card.
+
+The view should be named `UserProfileCard` and be initialized with a simple `User` struct containing `name: String`, `handle: String`, and `avatarURL: URL`.
+
+Requirements:
+- Use an `AsyncImage` to load the user's avatar from the URL.
+- Display the user's name in a `.headline` font and their handle (e.g., "@username") in a `.subheadline` font with a secondary color.
+- Include a "Follow" button that uses the "person.badge.plus" SF Symbol.
+- Arrange the elements cleanly inside an HStack with appropriate spacing.
+- The entire card should have a subtle shadow and rounded corners.

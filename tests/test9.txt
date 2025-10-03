@@ -1,0 +1,7 @@
+Write a complete SwiftUI view for visionOS 26 that presents a fully immersive space when a button is tapped.
+
+The view must:
+1. Have a button labeled "Enter Immersive Space".
+2. Use the `@Environment(\.openImmersiveSpace)` and `@Environment(\.dismissImmersiveSpace)` variables.
+3. Be able to open an immersive space with the ID "MyImmersiveScene".
+4. Include a second button inside the immersive space to dismiss it.

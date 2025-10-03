@@ -1,0 +1,17 @@
+Refactor this SwiftUI view and its `ObservableObject` to use the modern `@Observable` macro introduced in Swift 5.9. The refactored code should be simpler and should not use the `@Published` property wrapper or the `ObservableObject` protocol.
+
+**Old Code:**
+class UserSettings: ObservableObject {
+    @Published var score: Int = 0
+    @Published var username: String = "Guest"
+}
+
+struct SettingsView: View {
+    @StateObject private var settings = UserSettings()
+    var body: some View {
+        Form {
+            TextField("Username", text: $settings.username)
+            Stepper("Score: \(settings.score)", value: $settings.score)
+        }
+    }
+}
