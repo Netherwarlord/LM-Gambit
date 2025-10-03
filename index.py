@@ -43,7 +43,9 @@ class App(tk.Tk):
         self.minsize(760, 520)
 
         self.provider_names = list_provider_names()
-        self.provider_var = tk.StringVar(value=self.provider_names[0] if self.provider_names else "")
+        # Always default to Local Engine if available
+        default_provider = LocalEngineProvider.name if LocalEngineProvider.name in self.provider_names else (self.provider_names[0] if self.provider_names else "")
+        self.provider_var = tk.StringVar(value=default_provider)
         self.model_var = tk.StringVar()
         self.temperature_var = tk.DoubleVar(value=0.1)
         self.status_var = tk.StringVar(value="Idle")
