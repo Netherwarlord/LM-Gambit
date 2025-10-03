@@ -100,7 +100,7 @@ class App(tk.Tk):
         actual = ""
         def get_text(title):
             d = tk.Toplevel(self)
-            d.title(title)
+            d.title(f"{title} - LM-Gambit")
             d.geometry("600x400")
             t = tk.Text(d, wrap="word")
             t.pack(fill="both", expand=True)
@@ -119,7 +119,7 @@ class App(tk.Tk):
             messagebox.showinfo("Diff Viewer", "Both expected and actual output are required.")
     def configure_model_paths(self) -> None:
         dialog = tk.Toplevel(self)
-        dialog.title("Configure Model Paths")
+        dialog.title("Configure Model Paths - LM-Gambit")
         dialog.geometry("520x320")
         dialog.transient(self)
         dialog.grab_set()
@@ -183,7 +183,7 @@ class App(tk.Tk):
         DownloadModelDialog(self, model_dir)
     def __init__(self) -> None:
         super().__init__()
-        self.title("LLM Automated Test Console")
+        self.title("LM-Gambit v1.0.0")
         self.geometry("880x620")
         self.minsize(760, 520)
 
@@ -482,18 +482,6 @@ class App(tk.Tk):
         self.log = scrolledtext.ScrolledText(self, wrap="word", height=22)
         self.log.pack(fill="both", expand=True, padx=12, pady=(0, 12))
         self.log.configure(state="disabled")
-        if not RESULTS_DIR.exists():
-            messagebox.showinfo("No Reports", "The results directory does not exist yet.")
-            return
-
-        reports = list(RESULTS_DIR.glob("*.md"))
-        if not reports:
-            messagebox.showinfo("No Reports", "No markdown reports found yet.")
-            return
-
-        latest_report = max(reports, key=lambda p: p.stat().st_mtime)
-        open_path(latest_report)
-        self._append_log(f"Opened latest report: {latest_report.name}")
 
 
 if __name__ == "__main__":
