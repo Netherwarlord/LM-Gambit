@@ -1,10 +1,10 @@
+# Web backend
+fastapi>=0.115
+uvicorn[standard]>=0.30
+
 # Core dependencies
 requests>=2.31.0
 llama-cpp-python>=0.2.82
 
 # Apple Silicon (MLX) support (only needed on macOS ARM)
 mlx-lm>=0.10.0; platform_system == "Darwin" and platform_machine == "arm64"
-
-# GUI and plotting
-matplotlib>=3.0
-tkhtmlview

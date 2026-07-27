@@ -17,3 +17,14 @@ ENV/
 
 # Ignore other build artifacts
 *.egg-info/
+
+# Frontend
+web/node_modules/
+web/dist/
+node_modules/
+
+# Local model weights
+models/
+
+# Locally persisted GUI/CLI settings
+.core/user_settings.json

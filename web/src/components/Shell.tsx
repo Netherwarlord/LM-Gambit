@@ -1,0 +1,157 @@
+/** App chrome: brand rail, navigation, engine status and the live-run beacon. */
+
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  Cpu,
+  FileText,
+  FlaskConical,
+  Gauge,
+  ListChecks,
+  Menu,
+  Settings2,
+  X,
+} from 'lucide-react'
+import { Logo } from './Logo'
+import { Link, useRouter } from '../lib/router'
+import { api, type Run, type SystemInfo } from '../lib/api'
+import { cx } from '../lib/format'
+
+const NAV = [
+  { to: '/', label: 'Run', icon: Gauge, hint: 'Execute the diagnostic suite' },
+  { to: '/suite', label: 'Suite', icon: ListChecks, hint: 'Author the questions' },
+  { to: '/reports', label: 'Reports', icon: FileText, hint: 'Read past results' },
+  { to: '/playground', label: 'Playground', icon: FlaskConical, hint: 'Try a single prompt' },
+  { to: '/settings', label: 'Settings', icon: Settings2, hint: 'Paths and defaults' },
+]
+
+function isActive(path: string, to: string) {
+  return to === '/' ? path === '/' : path.startsWith(to)
+}
+
+export function Shell({ children, activeRun }: { children: ReactNode; activeRun: Run | null }) {
+  const { path } = useRouter()
+  const [system, setSystem] = useState<SystemInfo | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  useEffect(() => {
+    api.system().then(setSystem).catch(() => setSystem(null))
+  }, [])
+
+  useEffect(() => {
+    setDrawerOpen(false)
+  }, [path])
+
+  const nav = (
+    <nav className="flex flex-col gap-1">
+      {NAV.map(({ to, label, icon: Icon, hint }) => {
+        const active = isActive(path, to)
+        return (
+          <Link
+            key={to}
+            to={to}
+            title={hint}
+            className={cx(
+              'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.8125rem] font-medium transition-all',
+              active
+                ? 'bg-navy-750/80 text-ink-100 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
+                : 'text-ink-400 hover:bg-navy-800/60 hover:text-ink-200',
+            )}
+          >
+            <span
+              className={cx(
+                'absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-r-full transition-all',
+                active ? 'bg-ember-500' : 'bg-transparent',
+              )}
+            />
+            <Icon size={16} className={active ? 'text-ember-400' : 'text-ink-500 group-hover:text-ink-300'} />
+            {label}
+            {to === '/' && activeRun && (
+              <span className="ml-auto h-1.5 w-1.5 animate-pulse rounded-full bg-ember-400 shadow-[0_0_8px_2px_rgba(244,129,63,0.5)]" />
+            )}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+
+  const engineChip = system && (
+    <div className="rounded-xl border border-navy-700 bg-navy-900/50 px-3 py-2.5">
+      <div className="flex items-center gap-2 text-[0.6875rem] font-semibold tracking-wide text-ink-400 uppercase">
+        <Cpu size={12} className="text-gold-500" />
+        Engine
+      </div>
+      <div className="mt-1 truncate text-[0.75rem] font-medium text-ink-200" title={system.engine_runtime}>
+        {system.engine_runtime}
+      </div>
+      <div className="text-[0.6875rem] text-ink-500">{system.engine_architecture}</div>
+      {!system.template_ok && (
+        <div className="mt-1.5 text-[0.6875rem] text-rose-400">Report template missing</div>
+      )}
+    </div>
+  )
+
+  const sidebarBody = (
+    <>
+      <Link to="/" className="mb-7 flex items-center gap-3">
+        <Logo size={32} />
+        <div className="leading-tight">
+          <div className="text-[0.9375rem] font-semibold tracking-tight text-ink-100">
+            LM<span className="text-ember-400">-</span>Gambit
+          </div>
+          <div className="text-[0.6875rem] text-ink-500">
+            Diagnostic suite{system ? ` · v${system.version}` : ''}
+          </div>
+        </div>
+      </Link>
+      {nav}
+      <div className="mt-auto space-y-2 pt-6">{engineChip}</div>
+    </>
+  )
+
+  return (
+    <div className="flex min-h-screen">
+      {/* desktop rail */}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-navy-700/70 bg-navy-900/45 px-4 py-6 backdrop-blur-xl lg:flex">
+        {sidebarBody}
+      </aside>
+
+      {/* mobile drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="animate-fade-in absolute inset-0 bg-navy-950/75 backdrop-blur-sm"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <aside className="animate-fade-in relative flex h-full w-64 flex-col border-r border-navy-700 bg-navy-900 px-4 py-6">
+            <button
+              className="absolute top-5 right-4 text-ink-500 hover:text-ink-200"
+              onClick={() => setDrawerOpen(false)}
+              aria-label="Close navigation"
+            >
+              <X size={18} />
+            </button>
+            {sidebarBody}
+          </aside>
+        </div>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-3 border-b border-navy-700/70 px-4 py-3 lg:hidden">
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open navigation"
+          >
+            <Menu size={16} />
+          </button>
+          <Logo size={22} />
+          <span className="text-sm font-semibold">LM-Gambit</span>
+        </div>
+
+        <main className="mx-auto w-full max-w-[1400px] flex-1 px-5 py-7 sm:px-7 lg:px-9">
+          {children}
+        </main>
+      </div>
+    </div>
+  )
+}

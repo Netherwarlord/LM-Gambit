@@ -7,9 +7,18 @@ if str(CORE_DIR) not in sys.path:
     sys.path.insert(0, str(CORE_DIR))
 
 import argparse
+import time
 from runner import run_suite, TestRunError, TemplateNotFoundError
 from providers import list_provider_names, get_provider
 from config import DEFAULT_PROVIDER_NAME
+from reporting import append_sections, replace_analysis_section
+
+from plugin_api import GradeEntry, RunRecord, TestRecord
+from plugin_system import (
+    collect_report_sections,
+    get_plugin_manager,
+    render_grade_section,
+)
 
 def list_providers():
     print("Available providers:")
@@ -61,13 +70,60 @@ def main():
     model = args.m
     # args.t is parsed but not yet implemented in runner
 
+    plugins = get_plugin_manager()
+    for loaded in plugins.loaded:
+        if loaded.error:
+            print(f"Warning: plugin '{loaded.slug}' failed to load: {loaded.error}")
+
+    records: list[TestRecord] = []
+    grades: dict[int, list[GradeEntry]] = {}
+    started_at = time.time()
+
     def _print_progress(index: int, total: int, prompt, result):
         status = "FAILED" if "error" in result else "DONE"
         filename_label = prompt.get("filename", f"test{index}")
         title = prompt.get("title", f"Test {index}")
-        print(f"Running {title} [{filename_label}] ({index}/{total})... {status}")
+
+        record = TestRecord(
+            index=index,
+            total=total,
+            title=title,
+            filename=filename_label,
+            prompt=prompt.get("prompt", ""),
+            ok="error" not in result,
+            response=result.get("response") if "error" not in result else None,
+            error=str(result["error"]) if "error" in result else None,
+            metrics=dict(result.get("metrics") or {}),
+        )
+        records.append(record)
+
+        # Same contract as the web interface: failed questions are never graded.
+        scored = plugins.grade(record) if record.ok else []
+        if scored:
+            grades[index] = [GradeEntry(grader=n, grade=g) for n, g in scored]
+
+        plugins.emit("on_test_complete", record)
+
+        suffix = ""
+        if index in grades:
+            mean = sum(e.grade.score for e in grades[index]) / len(grades[index])
+            suffix = f"  [score {mean:.0%}]"
+        print(f"Running {title} [{filename_label}] ({index}/{total})... {status}{suffix}")
 
     print(f"Starting automated diagnostic run with provider '{provider}'…")
+    plugins.emit(
+        "on_run_start",
+        RunRecord(
+            id=f"cli-{int(started_at)}",
+            provider=provider,
+            model_id=model or "",
+            model_label=model or "(provider default)",
+            temperature=0.0,
+            total=0,
+            status="running",
+            started_at=started_at,
+        ),
+    )
     try:
         report_path = run_suite(provider_name=provider, model_id=model, progress_callback=_print_progress)
     except TestRunError as exc:
@@ -77,8 +133,59 @@ def main():
         print(f"Error: {exc}")
         return 1
 
+    _apply_plugins_to_report(report_path, records, grades, provider, model, started_at)
+
     print(f"\n✅ Success! Report saved to '{report_path.name}'.")
     return 0
+
+
+def _apply_plugins_to_report(report_path, records, grades, provider, model, started_at) -> None:
+    """Write grades and plugin sections into the report the CLI just produced.
+
+    Mirrors what the web backend does, so a run graded through either entrypoint
+    yields the same report.
+    """
+    plugins = get_plugin_manager()
+    label = report_path.stem.replace("automated_report_", "")
+
+    record = RunRecord(
+        id=f"cli-{int(started_at)}",
+        provider=provider,
+        model_id=model or "",
+        model_label=label,
+        temperature=0.0,
+        total=len(records),
+        status="completed",
+        started_at=started_at,
+        finished_at=time.time(),
+        report_path=report_path,
+        summary={},
+        tests=records,
+        grades=grades,
+    )
+
+    grade_markdown = render_grade_section(record)
+    if grade_markdown:
+        try:
+            replace_analysis_section(report_path, grade_markdown)
+        except OSError:
+            pass
+        overall = record.overall_score
+        if overall is not None:
+            print(f"\nGraded {len(grades)}/{len(records)} questions — overall {overall:.0%}")
+
+    try:
+        sections = collect_report_sections(record, plugins)
+    except Exception as exc:  # noqa: BLE001 - a plugin must not fail the CLI
+        print(f"Warning: report_sections hook failed: {exc}")
+        sections = []
+    if sections:
+        try:
+            append_sections(report_path, sections)
+        except OSError:
+            pass
+
+    plugins.emit("on_run_complete", record)
 
 if __name__ == "__main__":
     raise SystemExit(main())

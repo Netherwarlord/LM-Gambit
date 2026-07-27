@@ -120,7 +120,9 @@ def initialize_report_file(model_label: str) -> Path:
 
         ## Qualitative Analysis
 
+        <!--ANALYSIS_START-->
         *(Manual grading and analysis of the responses is required to determine the final letter grade.)*
+        <!--ANALYSIS_END-->
 
         ---
 
@@ -204,3 +206,42 @@ def finalize_report_summary(report_path: Path, results: List[Dict[str, object]])
         flags=re.DOTALL,
     )
     report_path.write_text(updated_content, encoding="utf-8")
+
+
+def replace_analysis_section(report_path: Path, markdown: str) -> None:
+    """Swap the qualitative-analysis placeholder for generated content.
+
+    Used when grader plugins produce scores, so the report carries real grades
+    instead of the "grade this by hand" note. No-op if the markers are absent
+    (an older report, or a customized header).
+    """
+    if not report_path.exists():
+        return
+
+    content = report_path.read_text(encoding="utf-8")
+    if "<!--ANALYSIS_START-->" not in content:
+        return
+
+    updated = re.sub(
+        r"<!--ANALYSIS_START-->.*?<!--ANALYSIS_END-->",
+        lambda _: f"<!--ANALYSIS_START-->\n{markdown.strip()}\n<!--ANALYSIS_END-->",
+        content,
+        flags=re.DOTALL,
+    )
+    report_path.write_text(updated, encoding="utf-8")
+
+
+def append_sections(report_path: Path, sections: List[str]) -> None:
+    """Append extra markdown blocks to the end of a finished report."""
+    blocks = [block.strip() for block in sections if block and block.strip()]
+    if not blocks or not report_path.exists():
+        return
+
+    existing = report_path.read_text(encoding="utf-8")
+    with report_path.open("a", encoding="utf-8") as report_file:
+        if has_unclosed_code_block(existing):
+            report_file.write("\n```\n")
+        if not existing.endswith("\n"):
+            report_file.write("\n")
+        for block in blocks:
+            report_file.write(f"\n---\n\n{block}\n")

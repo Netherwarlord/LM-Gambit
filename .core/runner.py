@@ -45,8 +45,14 @@ def run_suite(
     model_id: Optional[str] = None,
     temperature: Optional[float] = None,
     progress_callback: Optional[Callable[[int, int, Dict[str, str], Dict[str, object]], None]] = None,
+    prompts: Optional[List[Dict[str, str]]] = None,
 ) -> Path:
-    """Run the diagnostic test suite and return the generated report path."""
+    """Run the diagnostic test suite and return the generated report path.
+
+    When ``prompts`` is omitted every prompt in the ``tests`` directory is run.
+    Callers may pass an explicit subset (same shape as ``load_test_prompts``)
+    to re-run only part of the suite.
+    """
     ensure_directories()
     reset_temp_directory()
 
@@ -73,7 +79,8 @@ def run_suite(
             "Template file missing. Please create '.core/templates/test-block.md' before running tests."
         )
 
-    prompts = load_test_prompts()
+    if prompts is None:
+        prompts = load_test_prompts()
     if not prompts:
         raise TestRunError("No test prompts found in the 'tests' directory.")
 
