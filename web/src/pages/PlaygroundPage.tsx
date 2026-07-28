@@ -29,6 +29,12 @@ export function PlaygroundPage() {
   const [prompt, setPrompt] = useState('')
   const [result, setResult] = useState<PlaygroundResult | null>(null)
   const [sending, setSending] = useState(false)
+  const [saveTarget, setSaveTarget] = useState<null | true>(null)
+  // Built-ins are read-only, so only custom suites are valid targets.
+  const customSuites = useAsync(
+    () => api.suites().then((all) => all.filter((s) => !s.builtin)),
+    [],
+  )
 
   useEffect(() => {
     if (!providers.data?.length || provider) return
@@ -58,12 +64,24 @@ export function PlaygroundPage() {
     }
   }
 
-  const saveAsQuestion = async () => {
+  /**
+   * Append the prompt to a custom suite.
+   *
+   * There is no longer a single "the suite" to append to, and the built-ins
+   * are read-only, so this needs an explicit target. Only custom suites can
+   * be chosen; if none exist yet the button points at Testing Suites instead.
+   */
+  const saveAsQuestion = async (slug: string) => {
     if (!prompt.trim()) return
+    setSaveTarget(null)
     try {
-      const suite = await api.tests()
-      await api.saveTests([...suite.tests.map((t) => t.prompt), prompt.trim()])
-      toast('Added to the suite as the last question.', 'success')
+      const detail = await api.suite(slug)
+      const saved = await api.saveSuiteTests(slug, [
+        ...detail.tests.map((t) => t.prompt),
+        prompt.trim(),
+      ])
+      toast(`Added to "${saved.name}" as question ${saved.tests.length}.`, 'success')
+      customSuites.reload()
     } catch (cause) {
       toast(cause instanceof ApiError ? cause.message : String(cause), 'error')
     }
@@ -146,15 +164,55 @@ export function PlaygroundPage() {
               title="Prompt"
               icon={<FlaskConical size={14} />}
               actions={
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={saveAsQuestion}
-                  disabled={!prompt.trim() || disabled}
-                  title="Append this prompt to the diagnostic suite"
-                >
-                  <Plus size={12} />
-                  Add to suite
-                </button>
+                <div className="relative">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setSaveTarget((open) => (open ? null : true))}
+                    disabled={!prompt.trim() || disabled}
+                    title="Append this prompt to a custom suite"
+                  >
+                    <Plus size={12} />
+                    Add to suite
+                  </button>
+
+                  {saveTarget && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setSaveTarget(null)} />
+                      <div className="surface-raised animate-fade-up absolute right-0 z-20 mt-1.5 w-60 p-1.5">
+                        <p className="px-2 py-1 text-[0.625rem] font-semibold tracking-[0.09em] text-ink-500 uppercase">
+                          Add to
+                        </p>
+                        {customSuites.data?.length ? (
+                          customSuites.data.map((suite) => (
+                            <button
+                              key={suite.slug}
+                              className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[0.75rem] text-ink-300 transition-colors hover:bg-navy-750 hover:text-ink-100"
+                              onClick={() => saveAsQuestion(suite.slug)}
+                            >
+                              <span className="truncate">{suite.name}</span>
+                              <span className="num shrink-0 text-[0.6875rem] text-ink-500">
+                                {suite.count}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-2 py-2">
+                            <p className="text-[0.75rem] leading-relaxed text-ink-500">
+                              No custom suites yet. Built-in suites are read-only.
+                            </p>
+                            <Link
+                              to="/suite"
+                              className="btn btn-ghost btn-sm mt-2 w-full"
+                              onClick={() => setSaveTarget(null)}
+                            >
+                              Open Testing Suites
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               }
             />
             <div className="p-4">

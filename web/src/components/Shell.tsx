@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import {
+  BookOpen,
   Cpu,
   FileText,
   FlaskConical,
@@ -12,16 +13,20 @@ import {
   X,
 } from 'lucide-react'
 import { Logo } from './Logo'
+import { pluginIcon } from './PluginBlocks'
 import { Link, useRouter } from '../lib/router'
 import { api, type Run, type SystemInfo } from '../lib/api'
+import { usePluginUI } from '../hooks/usePluginUI'
 import { cx } from '../lib/format'
 
+/** Built-ins carry an order so plugin entries can slot between them. */
 const NAV = [
-  { to: '/', label: 'Run', icon: Gauge, hint: 'Execute the diagnostic suite' },
-  { to: '/suite', label: 'Suite', icon: ListChecks, hint: 'Author the questions' },
-  { to: '/reports', label: 'Reports', icon: FileText, hint: 'Read past results' },
-  { to: '/playground', label: 'Playground', icon: FlaskConical, hint: 'Try a single prompt' },
-  { to: '/settings', label: 'Settings', icon: Settings2, hint: 'Paths and defaults' },
+  { to: '/', label: 'Run', icon: Gauge, hint: 'Execute the diagnostic suite', order: 10 },
+  { to: '/suite', label: 'Testing Suites', icon: ListChecks, hint: 'Browse and author question suites', order: 20 },
+  { to: '/reports', label: 'Reports', icon: FileText, hint: 'Read past results', order: 30 },
+  { to: '/playground', label: 'Playground', icon: FlaskConical, hint: 'Try a single prompt', order: 40 },
+  { to: '/docs', label: 'Docs', icon: BookOpen, hint: 'Plugin framework reference', order: 80 },
+  { to: '/settings', label: 'Settings', icon: Settings2, hint: 'Paths and defaults', order: 90 },
 ]
 
 function isActive(path: string, to: string) {
@@ -32,6 +37,20 @@ export function Shell({ children, activeRun }: { children: ReactNode; activeRun:
   const { path } = useRouter()
   const [system, setSystem] = useState<SystemInfo | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const { nav: pluginNav } = usePluginUI()
+
+  // Plugin entries are merged into the rail rather than fenced off in a
+  // section of their own, so a plugin view feels like part of the app.
+  const navItems = [
+    ...NAV,
+    ...pluginNav.map((item) => ({
+      to: item.path,
+      label: item.label,
+      icon: pluginIcon(item.icon),
+      hint: item.hint || `From the ${item.slug} plugin`,
+      order: item.order,
+    })),
+  ].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))
 
   useEffect(() => {
     api.system().then(setSystem).catch(() => setSystem(null))
@@ -43,7 +62,7 @@ export function Shell({ children, activeRun }: { children: ReactNode; activeRun:
 
   const nav = (
     <nav className="flex flex-col gap-1">
-      {NAV.map(({ to, label, icon: Icon, hint }) => {
+      {navItems.map(({ to, label, icon: Icon, hint }) => {
         const active = isActive(path, to)
         return (
           <Link

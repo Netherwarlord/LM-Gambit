@@ -6,6 +6,9 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CORE_DIR = ROOT_DIR / ".core"
 TESTS_DIR = ROOT_DIR / "tests"
+# Built-in suites ship with the app and are read-only at runtime. Custom
+# suites live under TESTS_DIR as sibling directories, one per slug.
+BUILTIN_SUITES_DIR = CORE_DIR / "suites"
 RESULTS_DIR = ROOT_DIR / "results"
 TEMPLATES_DIR = CORE_DIR / "templates"
 TEMPLATE_PATH = TEMPLATES_DIR / "test-block.md"

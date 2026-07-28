@@ -1,0 +1,22 @@
+Using ONLY the three sources below, produce a unified account. Do not use outside knowledge. Do not fill gaps with what seems likely.
+
+SOURCE A — Municipal press release, dated 12 June
+"The Fairmont Bridge closed to traffic on 3 May for emergency inspection. Repairs began 20 May and are expected to conclude by 30 June. Cost is projected at $4.2 million."
+
+SOURCE B — Local newspaper report, dated 8 June
+"The bridge has been shut since early May. Contractors mobilised the week of 18 May, though actual repair work did not begin until 27 May because of a permitting delay. The city has not disclosed a figure, but two council members put the likely cost near $6 million."
+
+SOURCE C — Contractor's regulatory filing, dated 1 July
+"Site mobilisation: 18 May. Structural work commenced 27 May and completed 28 June. Invoiced to date: $5,780,000. A further claim of $310,000 for standby time during the permitting delay remains unresolved."
+
+Produce:
+
+1. A single dated timeline. Mark each entry as CORROBORATED (supported by two or more sources), SINGLE-SOURCE, or DISPUTED.
+
+2. An explicit conflict table listing every disagreement between sources, with the competing claims side by side, which source you weight higher, and your stated reason — recency, proximity to the facts, or specificity. Note that Source A's "repairs began 20 May" conflicts with two other sources; resolve it and say what A most likely meant.
+
+3. The total cost. Give the range the sources actually support, not a single number, and explain why a single number would misrepresent the evidence.
+
+4. A list of questions these sources do not answer.
+
+Rules: Cite the source letter for every factual claim you make. If you assert anything not traceable to A, B, or C, you have failed the task. If two sources cannot be reconciled, report the disagreement rather than averaging it away.

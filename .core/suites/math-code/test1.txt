@@ -1,0 +1,17 @@
+Compute each of the following exactly, by hand, showing intermediate steps. Do not round until the final answer. Do not approximate, and do not skip the working.
+
+1. 4,827 × 396
+
+2. 17.5% of 1,840, minus 3/8 of 512
+
+3. A container holds 3.75 litres. How many complete 45-millilitre doses can be drawn from it, and how much liquid is left over? Give the remainder in millilitres.
+
+4. Convert 68 miles per hour to metres per second, using 1 mile = 1,609.344 m exactly. Give the result to three decimal places.
+
+5. $12,000 earns 4.25% annual interest compounded quarterly. What is the balance after 3 years? Write the exact expression first, then evaluate to the cent.
+
+6. A shirt is marked down 30%, then a further 20% is taken off the reduced price. What is the single equivalent discount? Show why it is not 50%.
+
+Then answer:
+- Which of these six is most vulnerable to a rounding error, and at exactly which step does the error enter?
+- Which one is most commonly gotten wrong by intuition rather than arithmetic, and what is the wrong intuition?

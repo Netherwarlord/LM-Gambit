@@ -1,0 +1,18 @@
+This task has three stages. Complete them strictly in order. Do not read ahead and do not revise an earlier stage.
+
+STAGE 1 — Answer all three quickly, with your first instinct, in one line each. Do not show working.
+a) A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?
+b) If it takes 5 machines 5 minutes to make 5 widgets, how long would 100 machines take to make 100 widgets?
+c) A patch of lily pads doubles in size every day. If it takes 48 days to cover the whole lake, how long does it take to cover half the lake?
+
+STAGE 2 — Now critique your own Stage 1 answers. For each item:
+- State the intuitive-but-wrong answer the problem is engineered to elicit.
+- State whether you actually gave it.
+- Name the specific reasoning error that produces the wrong answer. Be precise about the mechanism, not just "it's a trick."
+
+STAGE 3 — Give the corrected answers with full algebraic working for (a), an explicit rate calculation for (b), and a backward-induction argument for (c). Then state one general heuristic that would have caught all three errors, and explain why that heuristic works.
+
+RULES
+- Do not go back and edit Stage 1. Leave it as written, right or wrong.
+- If a Stage 1 answer was already correct, say so plainly in Stage 2 rather than manufacturing an error to critique.
+- In Stage 2, being honest about having given the wrong answer scores higher than having been right.

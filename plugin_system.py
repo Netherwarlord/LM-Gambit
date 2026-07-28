@@ -34,9 +34,18 @@ import traceback
 import types
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from plugin_api import Grade, PluginInfo, RunRecord
+from plugin_api import (
+    UI_SLOTS,
+    Grade,
+    NavItem,
+    Page,
+    PluginInfo,
+    RunRecord,
+    SlotPanel,
+    ui_payload,
+)
 
 ROOT_DIR = Path(__file__).resolve().parent
 PLUGIN_DIR = ROOT_DIR / "plugins"
@@ -49,7 +58,11 @@ HOOK_NAMES = (
     "on_run_complete",
     "report_sections",
     "register_routes",
+    "ui_contributions",
 )
+
+#: Plugin pages live under this prefix so they can never shadow a core route.
+UI_PATH_PREFIX = "/x"
 
 
 @dataclass
@@ -121,6 +134,12 @@ class PluginManager:
 
     def load(self) -> List[LoadedPlugin]:
         """(Re)discover everything in the plugin directory."""
+        # Routes registered at startup close over the module object that
+        # existed then. Reloading swaps in a new module for every other hook
+        # but leaves those handlers reading the old one's globals, so they can
+        # quietly serve stale state. Nothing here can rebind them — say so.
+        had_routes = {plugin.slug for plugin in self.loaded if "register_routes" in plugin.hooks}
+
         self.loaded = []
         if not self.plugin_dir.is_dir():
             return self.loaded
@@ -130,6 +149,15 @@ class PluginManager:
         for path in _candidate_paths(self.plugin_dir):
             slug = path.parent.name if path.name == "__init__.py" else path.stem
             self.loaded.append(self._load_one(slug, path))
+
+        stale = sorted(had_routes & {plugin.slug for plugin in self.active})
+        if stale:
+            print(
+                f"[plugins] {', '.join(stale)} reloaded, but its HTTP routes still point at the "
+                "previously loaded module and may serve stale state. Restart the server to rebind them.",
+                file=sys.stderr,
+            )
+
         return self.loaded
 
     def _load_one(self, slug: str, path: Path) -> LoadedPlugin:
@@ -218,6 +246,66 @@ class PluginManager:
                 results.append((plugin, value))
         return results
 
+    # ------------------------------------------------------------------- ui
+
+    def ui_manifest(self) -> Dict[str, Any]:
+        """Collect every plugin's declared interface into one manifest.
+
+        The frontend fetches this at startup and renders from it, so installing
+        a plugin never requires rebuilding the UI. A plugin returning malformed
+        contributions is skipped with a warning rather than breaking the app.
+        """
+        nav: List[Dict[str, Any]] = []
+        pages: List[Dict[str, Any]] = []
+        slots: Dict[str, List[Dict[str, Any]]] = {slot: [] for slot in UI_SLOTS}
+
+        for plugin, value in self.collect("ui_contributions"):
+            items = value if isinstance(value, (list, tuple)) else [value]
+            for item in items:
+                try:
+                    self._add_contribution(plugin.slug, plugin.name, item, nav, pages, slots)
+                except Exception:
+                    print(
+                        f"[plugin:{plugin.slug}] bad UI contribution {item!r}: "
+                        f"{_last_line(traceback.format_exc())}",
+                        file=sys.stderr,
+                    )
+
+        nav.sort(key=lambda entry: (entry.get("order", 100), entry.get("label", "")))
+        for entries in slots.values():
+            entries.sort(key=lambda entry: entry.get("order", 100))
+
+        return {"nav": nav, "pages": pages, "slots": slots}
+
+    @staticmethod
+    def _add_contribution(
+        slug: str,
+        name: str,
+        item: Any,
+        nav: List[Dict[str, Any]],
+        pages: List[Dict[str, Any]],
+        slots: Dict[str, List[Dict[str, Any]]],
+    ) -> None:
+        if isinstance(item, NavItem):
+            entry = ui_payload(item)
+            entry["path"] = plugin_ui_path(slug, item.path)
+            entry["slug"] = slug
+            nav.append(entry)
+        elif isinstance(item, Page):
+            entry = ui_payload(item)
+            entry["path"] = plugin_ui_path(slug, item.path)
+            entry["slug"] = slug
+            entry["plugin"] = name
+            pages.append(entry)
+        elif isinstance(item, SlotPanel):
+            if item.slot not in slots:
+                raise ValueError(f"unknown slot {item.slot!r}; expected one of {', '.join(UI_SLOTS)}")
+            slots[item.slot].append(
+                {"slug": slug, "plugin": name, "order": item.order, "panel": ui_payload(item.panel)}
+            )
+        else:
+            raise TypeError(f"expected NavItem, Page or SlotPanel, got {type(item).__name__}")
+
     def grade(self, test: Any) -> List[Tuple[str, Grade]]:
         """Run every grader over one answer, normalising the return values."""
         grades: List[Tuple[str, Grade]] = []
@@ -232,6 +320,20 @@ class PluginManager:
                 continue
             grades.append((plugin.name, grade))
         return grades
+
+
+def plugin_ui_path(slug: str, path: str) -> str:
+    """Namespace a plugin's declared path under ``/x/``.
+
+    A plugin may write ``"/lint"`` or the fully-qualified ``"/x/code_lint/lint"``
+    and get the same result, so short paths stay readable while collisions
+    between two plugins — or with a future core route — remain impossible.
+    """
+    cleaned = "/" + (path or "").strip("/")
+    if cleaned.startswith(f"{UI_PATH_PREFIX}/"):
+        return cleaned
+    suffix = "" if cleaned == "/" else cleaned
+    return f"{UI_PATH_PREFIX}/{slug}{suffix}"
 
 
 def _last_line(text: str) -> str:
@@ -276,6 +378,70 @@ def letter_grade(score: float) -> str:
     return "F"
 
 
+def _suite_breakdown(record: RunRecord, graders: List[str]) -> List[str]:
+    """A suite × grader table of mean scores.
+
+    Worth its own table because a run now spans several suites, and a single
+    overall number hides where a model actually struggled. It also fixes a
+    misleading reading of abstentions: a grader that only understands code
+    abstains on most of a mixed run, which looks like weak coverage against the
+    whole suite list but is exactly right per-suite — "100% of math-code, not
+    applicable elsewhere". Abstentions show as `—`, never as a zero.
+    """
+    order: List[str] = []
+    per_suite: Dict[str, List[Any]] = {}
+    for test in record.tests:
+        slug = getattr(test, "suite", "") or "(unassigned)"
+        if slug not in per_suite:
+            per_suite[slug] = []
+            order.append(slug)
+        per_suite[slug].append(test)
+
+    # A single suite adds no information the overall line does not already give.
+    if len(order) < 2:
+        return []
+
+    header = ["| Suite | Questions | Score |", "| --- | --- | --- |"]
+    if graders:
+        header = [
+            "| Suite | Questions | Score | " + " | ".join(graders) + " |",
+            "| --- | --- | --- |" + " --- |" * len(graders),
+        ]
+
+    rows: List[str] = []
+    for slug in order:
+        tests = per_suite[slug]
+        scores = [s for s in (record.score_for(t.index) for t in tests) if s is not None]
+        mean = sum(scores) / len(scores) if scores else None
+        cells = [
+            f"`{slug}`",
+            str(len(tests)),
+            f"{mean:.0%} ({letter_grade(mean)})" if mean is not None else "—",
+        ]
+        for grader in graders:
+            values = [
+                entry.grade.score
+                for t in tests
+                for entry in (record.grades.get(t.index) or [])
+                if entry.grader == grader
+            ]
+            cells.append(
+                f"{sum(values) / len(values):.0%} ({len(values)}/{len(tests)})" if values else "—"
+            )
+        rows.append("| " + " | ".join(cells) + " |")
+
+    return [
+        "",
+        "**By suite**",
+        "",
+        *header,
+        *rows,
+        "",
+        "A `—` means every grader abstained there, not a zero. Abstentions never "
+        "count against a score.",
+    ]
+
+
 def render_grade_section(record: RunRecord) -> Optional[str]:
     """Render grades as the report's Qualitative Analysis block."""
     overall = record.overall_score
@@ -293,17 +459,27 @@ def render_grade_section(record: RunRecord) -> Optional[str]:
         "",
         "Scores come from plugins in `plugins/`, so they reflect whatever those "
         "plugins check — not a judgement of correctness. Review before relying on them.",
-        "",
-        "| # | Question | Score | Grader | Notes |",
-        "| --- | --- | --- | --- | --- |",
     ]
 
+    lines.extend(_suite_breakdown(record, graders))
+
+    lines.extend(
+        [
+            "",
+            "**By question**",
+            "",
+            "| # | Suite | Question | Score | Grader | Notes |",
+            "| --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+
     for test in record.tests:
+        suite = escape(getattr(test, "suite", "") or "—")
         for entry in record.grades.get(test.index) or []:
             label = escape(entry.grade.label)
             score = f"{entry.grade.score:.0%}" + (f" ({label})" if label else "")
             lines.append(
-                f"| {test.index} | {escape(test.title)} | {score} "
+                f"| {test.index} | `{suite}` | {escape(test.title)} | {score} "
                 f"| {escape(entry.grader)} | {escape(entry.grade.notes) or '—'} |"
             )
 

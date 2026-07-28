@@ -65,6 +65,12 @@ class TestOutcome:
     error: Optional[str] = None
     metrics: Optional[Dict[str, Any]] = None
     grades: List[Dict[str, Any]] = field(default_factory=list)
+    suite: str = ""
+
+    @property
+    def question_id(self) -> str:
+        """Unique across suites. ``filename`` alone is not — see RunState."""
+        return f"{self.suite}/{self.filename}" if self.suite else self.filename
 
     @property
     def score(self) -> Optional[float]:
@@ -79,6 +85,8 @@ class TestOutcome:
             "total": total,
             "title": self.title,
             "filename": self.filename,
+            "suite": self.suite,
+            "question_id": self.question_id,
             "status": self.status,
             "elapsed": round(self.elapsed, 2),
             "response": self.response,
@@ -107,7 +115,13 @@ class RunState:
     subscribers: List["asyncio.Queue[Dict[str, Any]]"] = field(default_factory=list)
     cancel_event: threading.Event = field(default_factory=threading.Event)
     grades: Dict[int, List[GradeEntry]] = field(default_factory=dict)
-    prompts_by_filename: Dict[str, str] = field(default_factory=dict)
+    #: Prompt text keyed by qualified ``"<suite>/<file>"`` ID.
+    #:
+    #: This was once keyed by bare filename. With several suites in one run
+    #: that silently returns the wrong question's text: graders derive their
+    #: entire rubric from the prompt, so a collision yields confident,
+    #: plausible, wrong scores with no error anywhere. Never key by filename.
+    prompts_by_id: Dict[str, str] = field(default_factory=dict)
 
     @property
     def completed(self) -> int:
@@ -154,6 +168,16 @@ class RunState:
             "error": self.error,
             "summary": self.summary(),
         }
+
+
+def _prompt_key(prompt: Dict[str, str]) -> str:
+    """Qualified ID for a prompt dict as the loader produces it."""
+    qualified = prompt.get("id")
+    if qualified:
+        return str(qualified)
+    suite = prompt.get("suite", "")
+    filename = prompt.get("filename", "")
+    return f"{suite}/{filename}" if suite else filename
 
 
 def _format_sse(event: Dict[str, Any]) -> str:
@@ -217,8 +241,8 @@ class RunManager:
                 model_label=model_label,
                 temperature=temperature,
                 total=len(prompts),
-                prompts_by_filename={
-                    p.get("filename", ""): p.get("prompt", "") for p in prompts
+                prompts_by_id={
+                    _prompt_key(p): p.get("prompt", "") for p in prompts
                 },
             )
             self._runs[run.id] = run
@@ -282,6 +306,7 @@ class RunManager:
                     index=index,
                     title=prompt.get("title", f"Test {index}"),
                     filename=prompt.get("filename", f"test{index}"),
+                    suite=prompt.get("suite", ""),
                     status="error",
                     elapsed=elapsed,
                     error=str(result["error"]),
@@ -292,6 +317,7 @@ class RunManager:
                     index=index,
                     title=prompt.get("title", f"Test {index}"),
                     filename=prompt.get("filename", f"test{index}"),
+                    suite=prompt.get("suite", ""),
                     status="ok",
                     elapsed=elapsed,
                     response=str(result.get("response", "")),
@@ -306,7 +332,7 @@ class RunManager:
             record = build_test_record(
                 outcome,
                 total=run.total,
-                prompt_text=run.prompts_by_filename.get(outcome.filename, ""),
+                prompt_text=run.prompts_by_id.get(outcome.question_id, ""),
             )
             get_plugin_manager().emit("on_test_complete", record)
 
@@ -317,7 +343,7 @@ class RunManager:
 
         get_plugin_manager().emit(
             "on_run_start",
-            build_run_record(run, prompts_by_filename=run.prompts_by_filename),
+            build_run_record(run, prompts_by_id=run.prompts_by_id),
         )
 
         try:
@@ -381,7 +407,7 @@ class RunManager:
         path = self._report_path(run)
         return build_run_record(
             run,
-            prompts_by_filename=run.prompts_by_filename,
+            prompts_by_id=run.prompts_by_id,
             report_path=path if path.exists() else None,
         )
 
@@ -403,7 +429,7 @@ class RunManager:
         record = build_test_record(
             outcome,
             total=run.total,
-            prompt_text=run.prompts_by_filename.get(outcome.filename, ""),
+            prompt_text=run.prompts_by_id.get(outcome.question_id, ""),
         )
         graded = get_plugin_manager().grade(record)
         if not graded:

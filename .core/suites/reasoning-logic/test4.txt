@@ -1,0 +1,17 @@
+Counterfactual reasoning.
+
+Premise: Suppose that around 1750, a working and fuel-efficient steam engine had been independently developed in China rather than in Britain, and that China's accessible coal deposits had lain near the Yangtze delta instead of far to the north.
+
+Write an analysis of 400 to 500 words that does all of the following.
+
+1. Identify three preconditions for industrialization that this counterfactual satisfies, and two that it leaves unsatisfied.
+
+2. Trace a plausible causal chain across the following century, with at least four linked steps. Each step must follow from the step before it, using only what would be true inside the counterfactual. Do not smuggle in outcomes that you know happened in actual history.
+
+3. Name one significant thing that would probably NOT have changed, and defend why this counterfactual does not reach it.
+
+4. Identify the single most fragile link in your own chain — the one that a well-informed critic would attack first — and state what would have to be true for it to hold.
+
+5. Mark clearly which of your claims are load-bearing speculation and which rest on documented economic history.
+
+Constraints: Do not simply mirror-image real history with the names swapped. Internal consistency matters more than the plausibility of the premise itself. Do not hedge the whole answer into vagueness; commit to a specific chain and then critique it.

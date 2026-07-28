@@ -20,6 +20,7 @@ import {
   useAsync,
   useToast,
 } from '../components/ui'
+import { PluginSlot } from '../components/PluginBlocks'
 import { Markdown } from '../components/Markdown'
 import { ScoreBadge, scoreTone } from '../components/ScoreBadge'
 import { ThroughputChart } from '../components/ThroughputChart'
@@ -185,6 +186,7 @@ export function ReportsPage() {
                 </ul>
               )}
             </Card>
+            <PluginSlot slot="reports.aside" className="mt-4" />
           </div>
 
           {/* ----------------------------------------------------- detail */}

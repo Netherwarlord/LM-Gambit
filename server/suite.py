@@ -1,73 +1,89 @@
-"""Reading and writing the prompt suite in ``tests/``.
+"""Server-side access to named test suites.
 
-The engine treats every ``tests/*.txt`` file as one prompt and derives its title
-from the first non-empty line, ordering files by a natural sort of their names.
-To keep the web editor and the ``auto-test.py`` CLI in perfect agreement, saving
-rewrites the directory as ``test1.txt`` … ``testN.txt`` in the order shown in
-the builder. That makes add / remove / reorder unambiguous for both entrypoints.
+The engine keeps suites in two tiers — read-only built-ins under
+``.core/suites/`` and user-owned custom ones under ``tests/<slug>/`` — and this
+module is the thin server layer over :mod:`suites` in the core.
+
+Everything here speaks **qualified question IDs** (``"<suite>/<file>"``). Bare
+filenames are ambiguous the moment a run draws from more than one suite, and
+resolving one to the wrong question would hand a grader the wrong prompt and
+produce a confident, wrong score in silence.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, Sequence
 
-from .core_bridge import TESTS_DIR, load_test_prompts
+from .core_bridge import (  # noqa: F401  (several are re-exported for the API)
+    TESTS_DIR,
+    ReadOnlySuiteError,
+    Suite,
+    SuiteError,
+    create_suite,
+    delete_suite,
+    duplicate_suite,
+    find_prompts,
+    get_suite,
+    list_suites,
+    load_prompts,
+    load_suite_prompts,
+    save_suite_tests,
+    split_question_id,
+    update_suite,
+)
+
+__all__ = [
+    "ReadOnlySuiteError",
+    "Suite",
+    "SuiteError",
+    "create_suite",
+    "delete_suite",
+    "duplicate_suite",
+    "get_suite",
+    "list_suites",
+    "load_suite_prompts",
+    "resolve_selections",
+    "save_suite_tests",
+    "update_suite",
+]
 
 
-class SuiteError(Exception):
-    """Raised when the suite on disk cannot be read or written."""
+def resolve_selections(
+    selections: Optional[Sequence[object]] = None,
+    question_ids: Optional[Sequence[str]] = None,
+) -> List[Dict[str, str]]:
+    """Turn a run request into an ordered list of prompts.
 
+    ``selections`` is a list of objects with ``.suite`` and optional
+    ``.filenames``; a suite with no filenames contributes all of its questions.
+    ``question_ids`` is the older flat form and must be fully qualified.
+    Passing neither means every built-in suite.
+    """
+    if selections:
+        prompts: List[Dict[str, str]] = []
+        seen = set()
+        for selection in selections:
+            slug = getattr(selection, "suite", None) or ""
+            get_suite(slug)  # raises SuiteError for an unknown slug
+            filenames = getattr(selection, "filenames", None)
+            chosen = (
+                load_suite_prompts(slug)
+                if not filenames
+                else find_prompts([f"{slug}/{name}" for name in filenames])
+            )
+            for entry in chosen:
+                if entry["id"] not in seen:
+                    seen.add(entry["id"])
+                    prompts.append(entry)
+        return prompts
 
-def derive_title(prompt: str, fallback: str) -> str:
-    for line in prompt.splitlines():
-        stripped = line.strip()
-        if stripped:
-            return stripped
-    return fallback
+    if question_ids:
+        bare = [qid for qid in question_ids if "/" not in qid]
+        if bare:
+            raise SuiteError(
+                "Bare filenames are ambiguous across suites: "
+                f"{', '.join(sorted(bare))}. Use '<suite>/<file>' IDs, or 'selections'."
+            )
+        return find_prompts(list(question_ids))
 
-
-def list_tests() -> List[Dict[str, str]]:
-    """Return the suite exactly as the engine sees it."""
-    TESTS_DIR.mkdir(parents=True, exist_ok=True)
-    return load_test_prompts()
-
-
-def find_tests(filenames: List[str]) -> List[Dict[str, str]]:
-    """Return the prompts matching ``filenames``, preserving suite order."""
-    wanted = set(filenames)
-    selected = [prompt for prompt in list_tests() if prompt["filename"] in wanted]
-    missing = wanted - {prompt["filename"] for prompt in selected}
-    if missing:
-        raise SuiteError(f"Unknown test file(s): {', '.join(sorted(missing))}")
-    return selected
-
-
-def save_suite(prompts: List[str]) -> List[Dict[str, str]]:
-    """Replace the suite with ``prompts`` and return the resulting tests."""
-    cleaned = [text.strip() for text in prompts]
-    for position, text in enumerate(cleaned, start=1):
-        if not text:
-            raise SuiteError(f"Question {position} is empty. Remove it or add a prompt.")
-
-    TESTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    target_names = {f"test{index}.txt" for index in range(1, len(cleaned) + 1)}
-    written: List[Path] = []
-
-    for index, text in enumerate(cleaned, start=1):
-        path = TESTS_DIR / f"test{index}.txt"
-        try:
-            path.write_text(text + "\n", encoding="utf-8")
-        except OSError as exc:
-            raise SuiteError(f"Could not write {path.name}: {exc}") from exc
-        written.append(path)
-
-    for stale in TESTS_DIR.glob("*.txt"):
-        if stale.name not in target_names:
-            try:
-                stale.unlink()
-            except OSError:
-                continue
-
-    return list_tests()
+    return load_prompts(None)

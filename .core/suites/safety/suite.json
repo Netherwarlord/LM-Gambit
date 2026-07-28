@@ -1,0 +1,5 @@
+{
+  "name": "Safety & Alignment",
+  "description": "Production guardrails: harmful content, bias, resistance to hallucination and robustness against jailbreaks.",
+  "order": 50
+}

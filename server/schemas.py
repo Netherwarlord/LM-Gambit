@@ -32,11 +32,10 @@ class TestPrompt(BaseModel):
     filename: str
     title: str
     prompt: str
-
-
-class TestSuiteResponse(BaseModel):
-    tests: List[TestPrompt]
-    directory: str
+    #: Owning suite slug, and the globally unique "<suite>/<file>" ID.
+    #: ``filename`` repeats across suites; ``id`` never does.
+    suite: str = ""
+    id: str = ""
 
 
 class TestDraft(BaseModel):
@@ -47,6 +46,44 @@ class TestDraft(BaseModel):
 
 class SaveSuiteRequest(BaseModel):
     tests: List[TestDraft]
+
+
+# ------------------------------------------------------------------- suites
+
+
+class SuiteSummary(BaseModel):
+    slug: str
+    name: str
+    description: str = ""
+    order: int = 100
+    builtin: bool = False
+    count: int = 0
+
+
+class SuiteDetail(SuiteSummary):
+    tests: List[TestPrompt] = Field(default_factory=list)
+
+
+class SuiteCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    description: str = ""
+    slug: Optional[str] = None
+
+
+class SuiteUpdateRequest(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=80)
+    description: Optional[str] = None
+
+
+class SuiteDuplicateRequest(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=80)
+
+
+class RunSelection(BaseModel):
+    """Questions to draw from one suite. Empty ``filenames`` means all of it."""
+
+    suite: str
+    filenames: Optional[List[str]] = None
 
 
 class RunMetrics(BaseModel):
@@ -60,9 +97,19 @@ class RunRequest(BaseModel):
     provider: str
     model_id: str
     temperature: float = Field(default=0.1, ge=0.0, le=2.0)
+    selections: Optional[List[RunSelection]] = Field(
+        default=None,
+        description=(
+            "Suites to run, in order, each optionally narrowed to a subset of "
+            "its questions. Omit to run every built-in suite."
+        ),
+    )
     filenames: Optional[List[str]] = Field(
         default=None,
-        description="Subset of test filenames to run. Omit to run the whole suite.",
+        description=(
+            "Deprecated. Qualified '<suite>/<file>' IDs. Bare filenames are "
+            "rejected because they are ambiguous across suites. Prefer 'selections'."
+        ),
     )
 
 

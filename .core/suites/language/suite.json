@@ -1,0 +1,5 @@
+{
+  "name": "Language",
+  "description": "Foundational understanding and generation: sentiment, entities, similarity, coreference, summarization and translation.",
+  "order": 10
+}

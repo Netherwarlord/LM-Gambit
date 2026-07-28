@@ -1,0 +1,5 @@
+{
+  "name": "Context & Knowledge",
+  "description": "Handling large inputs and staying grounded: long-context recall, retrieval from provided sources, strict instruction following and persona consistency.",
+  "order": 40
+}

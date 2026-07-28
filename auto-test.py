@@ -11,6 +11,7 @@ import time
 from runner import run_suite, TestRunError, TemplateNotFoundError
 from providers import list_provider_names, get_provider
 from config import DEFAULT_PROVIDER_NAME
+from suites import SuiteError, list_suites, load_prompts
 from reporting import append_sections, replace_analysis_section
 
 from plugin_api import GradeEntry, RunRecord, TestRecord
@@ -35,15 +36,31 @@ def list_models(provider_name):
     except Exception as e:
         print(f"Error listing models: {e}")
 
+def list_suite_slugs():
+    print("Available suites:")
+    for suite in list_suites():
+        kind = "built-in" if suite.builtin else "custom  "
+        print(f"  {suite.slug:<20} {kind}  {suite.count:>2} questions  {suite.name}")
+
+
 def print_usage():
     print("""
 -h --help          Lists command cli usage instructions
 -p <provider>      Sets the provider to connect to, uses local engine if unset
 -m <model>         Sets the model to run tests with. (this should have the ability for tab autocompletion from the models found from the provider)
--l --list          Lists providers if used as the only flag, lists models found if used after -p
--t --test          defines the test suite to use for the run
+-l --list          Lists providers if used as the only flag, lists models found if used
+                   after -p
+-s --suites        Lists the available suites and exits
+-t --test          One or more suite slugs to run, comma-separated or repeated.
+                   Omit to run every BUILT-IN suite (custom suites are never
+                   included by default, so a bare run means the same thing on
+                   every machine).
 
-usage example: python3 auto-test.py -m Qwen3-Coder-30B.gguf -t SwiftUI-Knowledge
+usage examples:
+  python3 auto-test.py -m gemma-4-E2B-it-Q8_0
+  python3 auto-test.py -m gemma-4-E2B-it-Q8_0 -t math-code
+  python3 auto-test.py -m gemma-4-E2B-it-Q8_0 -t language,safety
+  python3 auto-test.py --suites
 """)
 
 def main():
@@ -52,23 +69,53 @@ def main():
     parser.add_argument('-p', type=str, metavar='PROVIDER', help='Provider to use')
     parser.add_argument('-m', type=str, metavar='MODEL', help='Model to use')
     parser.add_argument('-l', '--list', action='store_true', help='List providers or models')
-    parser.add_argument('-t', type=str, metavar='TEST', help='Test suite to use (not yet implemented)')
+    parser.add_argument(
+        '-t', '--test', action='append', metavar='SUITE',
+        help='Suite slug to run; repeatable or comma-separated. Omit for all built-ins.',
+    )
+    parser.add_argument('-s', '--suites', action='store_true', help='List available suites')
     args = parser.parse_args()
+
+    if args.suites:
+        list_suite_slugs()
+        return 0
 
     if args.help:
         print_usage()
         return 0
 
+    # A slug list, flattened from repeats and commas. None means "all built-ins".
+    slugs = None
+    if args.test:
+        slugs = [part.strip() for entry in args.test for part in entry.split(",") if part.strip()]
+        slugs = slugs or None
+
     if args.list:
         if args.p:
             list_models(args.p)
+        elif args.test is not None:
+            list_suite_slugs()
         else:
             list_providers()
         return 0
 
     provider = args.p or DEFAULT_PROVIDER_NAME
     model = args.m
-    # args.t is parsed but not yet implemented in runner
+
+    try:
+        prompts = load_prompts(slugs)
+    except SuiteError as exc:
+        print(f"Error: {exc}")
+        list_suite_slugs()
+        return 1
+
+    if not prompts:
+        target = ", ".join(slugs) if slugs else "the built-in suites"
+        print(f"Error: no questions found in {target}.")
+        return 1
+
+    scope = ", ".join(slugs) if slugs else "all built-in suites"
+    print(f"Suites: {scope} — {len(prompts)} questions")
 
     plugins = get_plugin_manager()
     for loaded in plugins.loaded:
@@ -82,6 +129,9 @@ def main():
     def _print_progress(index: int, total: int, prompt, result):
         status = "FAILED" if "error" in result else "DONE"
         filename_label = prompt.get("filename", f"test{index}")
+        # Several suites contain a test1.txt, so the bare name is ambiguous in
+        # a multi-suite run. Log the qualified ID the run actually keys on.
+        label = prompt.get("id") or filename_label
         title = prompt.get("title", f"Test {index}")
 
         record = TestRecord(
@@ -89,6 +139,7 @@ def main():
             total=total,
             title=title,
             filename=filename_label,
+            suite=prompt.get("suite", ""),
             prompt=prompt.get("prompt", ""),
             ok="error" not in result,
             response=result.get("response") if "error" not in result else None,
@@ -108,7 +159,7 @@ def main():
         if index in grades:
             mean = sum(e.grade.score for e in grades[index]) / len(grades[index])
             suffix = f"  [score {mean:.0%}]"
-        print(f"Running {title} [{filename_label}] ({index}/{total})... {status}{suffix}")
+        print(f"Running {title} [{label}] ({index}/{total})... {status}{suffix}")
 
     print(f"Starting automated diagnostic run with provider '{provider}'…")
     plugins.emit(
@@ -125,7 +176,12 @@ def main():
         ),
     )
     try:
-        report_path = run_suite(provider_name=provider, model_id=model, progress_callback=_print_progress)
+        report_path = run_suite(
+            provider_name=provider,
+            model_id=model,
+            progress_callback=_print_progress,
+            prompts=prompts,
+        )
     except TestRunError as exc:
         print(f"Error: {exc}")
         return 1

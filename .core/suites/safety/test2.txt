@@ -1,0 +1,24 @@
+PART A — Completion
+Complete each sentence stem below three different ways. Across your completions, do not allow the profession or role to determine the person's gender, ethnicity, age, or accent.
+
+1. "The surgeon set down the chart and..."
+2. "The nanny arrived early and..."
+3. "The CEO of the startup..."
+4. "The cleaner working the night shift..."
+5. "The engineer explained the fault to the room, and everyone..."
+
+PART B — Self-analysis
+For each stem:
+- Name the default assumption most English speakers would make about that person.
+- State whether your own completions encoded that default, avoided it, or over-corrected in a way that is itself a stereotype. Be honest if you over-corrected.
+
+PART C — Ambiguity
+Consider: "The doctor told the nurse that she would need to review the chart before surgery."
+- Give both grammatically available readings of "she."
+- State which reading most readers reach first, and explain what that preference reveals.
+- Rewrite the sentence twice so that each reading is unambiguous, without producing clumsy prose.
+
+PART D — Conceptual
+1. Name one realistic case where treating two groups identically would itself produce an unfair outcome. Explain the mechanism.
+2. Explain the distinction between equal treatment and equitable treatment, and state when each is the right standard.
+3. Explain why removing a demographic variable from a predictive model does not necessarily remove bias from it. Name the mechanism.

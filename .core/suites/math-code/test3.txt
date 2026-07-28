@@ -1,0 +1,14 @@
+PART A — Calculus. Show all working.
+
+1. Differentiate f(x) = (x² · ln(3x)) / (x + 1). Simplify your result.
+2. Evaluate the definite integral of (2x) / (x² + 1) from x = 0 to x = 2. Give the exact value, not a decimal.
+3. Find all critical points of g(x) = x³ − 6x² + 9x + 2 and classify each as a local maximum, local minimum, or neither, using the second derivative test. State what the test cannot tell you and when.
+
+PART B — Statistics.
+
+A clinical trial reports: n = 240, mean reduction in systolic blood pressure of 4.1 mmHg, 95% confidence interval [0.3, 7.9], p = 0.038.
+
+4. State precisely what the p-value does mean and what it does not mean. Name two common misinterpretations and say why each is wrong.
+5. The confidence interval barely excludes zero. What does that tell you about the precision of the estimate, and why might this specific result fail to replicate?
+6. The authors conclude the drug is "clinically significant." Explain the distinction between statistical significance and clinical significance, and state what additional information you would need to evaluate their claim.
+7. Suppose the authors ran 20 outcome measures and reported this one. What is the name of that problem, what is the expected number of spurious "significant" results at α = 0.05, and what correction would you apply?

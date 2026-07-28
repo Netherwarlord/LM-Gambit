@@ -1,0 +1,10 @@
+Analyze the sentiment of the following customer review.
+
+Review:
+"I ordered the noise-cancelling headphones after reading three glowing write-ups. The build quality genuinely surprised me — the hinges feel solid and the earcups are the most comfortable I've worn. Battery life is as advertised. That said, the companion app crashed twice during setup, and support took nine days to answer a one-line question. I still reach for these every morning."
+
+Do all of the following:
+1. State the dominant overall sentiment (positive, negative, neutral, or mixed) in one word.
+2. Give an aspect-level breakdown: for each of build quality, battery, software, and customer support, label the sentiment and quote the span of text that justifies it.
+3. Identify the single sentence that most complicates a naive positive/negative classification, and explain why.
+4. Rate your confidence in the overall label from 0 to 100 and justify the number.

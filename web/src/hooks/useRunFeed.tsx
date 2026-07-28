@@ -21,6 +21,7 @@ import {
   subscribeToRun,
   type Run,
   type RunEvent,
+  type RunSelection,
   type TestCompletedEvent,
 } from '../lib/api'
 
@@ -48,6 +49,7 @@ interface RunFeedValue {
     provider: string
     model_id: string
     temperature: number
+    selections?: RunSelection[]
     filenames?: string[]
   }) => Promise<void>
   cancel: () => Promise<void>
@@ -159,6 +161,7 @@ export function RunFeedProvider({ children }: { children: ReactNode }) {
       provider: string
       model_id: string
       temperature: number
+      selections?: RunSelection[]
       filenames?: string[]
     }) => {
       setStarting(true)

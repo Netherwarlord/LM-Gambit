@@ -1,0 +1,11 @@
+Extract every named entity from the news excerpt below and classify it.
+
+Excerpt:
+"Reuters, Nairobi — On 14 March 2023, the Kenya Wildlife Service and the International Union for Conservation of Nature signed a five-year agreement at the Serena Hotel to expand rhino corridors across Tsavo East National Park. Dr. Amina Okello, who has led KWS since 2019, said the deal was modeled on a program Botswana abandoned in 2017. The World Bank will contribute $42 million; the remainder comes from the Leakey Foundation. Reporting by Jonah Mwangi; editing by Priya Raghunathan."
+
+Return a markdown table with the columns: Entity | Type | Justification. Use only these types: PERSON, ORG, LOCATION, DATE, MONEY, FACILITY.
+
+Then answer separately:
+1. Which mention is an alias for an entity already listed under a different surface form?
+2. Which single string is genuinely ambiguous between two types, and why?
+3. Which entity is a nested entity — one entity name contained inside another — and how did you handle it?

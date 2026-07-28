@@ -1,0 +1,14 @@
+Summarize the passage below twice, under strict and different constraints.
+
+Passage:
+"Mycorrhizal networks are symbiotic associations between fungi and plant roots, occurring in roughly ninety percent of land plant families. The fungus extends hyphae far beyond the root zone, increasing the plant's absorptive surface area by one to two orders of magnitude, and delivers phosphorus, nitrogen, and water. In exchange it receives carbon fixed during photosynthesis, between four and twenty percent of the plant's total photosynthate. Because a single fungal network can connect multiple host plants, researchers have documented transfers of carbon and defensive signaling compounds between neighboring trees. Popular accounts compress this into the phrase 'wood wide web,' which several soil ecologists argue overstates the evidence: most transfer studies were conducted in greenhouses, effect sizes under field conditions are small and inconsistent, and the claim that mature trees preferentially nourish their own seedlings rests on a handful of studies that have not been independently replicated."
+
+Produce:
+1. An EXTRACTIVE summary: exactly three sentences, copied verbatim from the passage, chosen so that both the mechanism and the scientific caveat survive.
+2. An ABSTRACTIVE summary of exactly 40 words. Not 39, not 41. Reworded throughout, readable by a non-specialist.
+
+After each, state its word count.
+
+Then answer:
+- Name one fact that survived both compressions and one that survived only one, and explain the tradeoff you made.
+- The passage contains a claim and a challenge to that claim. Which summary handles the tension better, and why?

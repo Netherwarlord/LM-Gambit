@@ -1,0 +1,19 @@
+Solve the following deduction problem. Show every inference step.
+
+Four researchers — Alvarez, Brandt, Chen, and Dube — each work in exactly one of four buildings (North, South, East, West) and each studies exactly one topic (algae, basalt, comets, dialects). No two share a building or a topic.
+
+Clues:
+1. The person in North studies neither algae nor comets.
+2. Chen works in neither South nor West.
+3. The basalt researcher works directly east of the algae researcher. Among these four buildings, only East is directly east of West; North and South are neither east nor west of anything.
+4. Brandt studies dialects.
+5. Alvarez does not work in East.
+6. Dube does not study comets.
+
+Produce:
+(a) The complete assignment of person, building, and topic.
+(b) A numbered chain of deductions in which every step cites the clue number it uses. Each step must follow from clues and prior steps only.
+(c) A statement of whether the solution is unique, with the reasoning that establishes uniqueness.
+(d) Identify any clue that is logically redundant — one whose removal would not change the solution — and prove it is redundant.
+
+If the constraints turn out to be contradictory, say so and name the minimal set of clues that conflict. Do not invent an assignment that satisfies only some of them.

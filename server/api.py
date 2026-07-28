@@ -46,11 +46,27 @@ from .schemas import (
     SaveSuiteRequest,
     SettingsResponse,
     SettingsUpdate,
+    SuiteCreateRequest,
+    SuiteDetail,
+    SuiteDuplicateRequest,
+    SuiteSummary,
+    SuiteUpdateRequest,
     SystemInfo,
     TestPrompt,
-    TestSuiteResponse,
 )
-from .suite import SuiteError, list_tests, find_tests, save_suite
+from .suite import (
+    ReadOnlySuiteError,
+    SuiteError,
+    create_suite,
+    delete_suite,
+    duplicate_suite,
+    get_suite,
+    list_suites,
+    load_suite_prompts,
+    resolve_selections,
+    save_suite_tests,
+    update_suite,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -91,6 +107,16 @@ async def get_system() -> SystemInfo:
 async def get_plugins() -> List[PluginSummary]:
     """Everything discovered in plugins/, including files that failed to load."""
     return [PluginSummary(**vars(info)) for info in get_plugin_manager().info()]
+
+
+@router.get("/plugins/ui")
+async def get_plugin_ui() -> dict:
+    """The interface plugins declare: nav entries, pages and slot panels.
+
+    The frontend renders straight from this, which is why installing a plugin
+    never requires rebuilding the UI.
+    """
+    return get_plugin_manager().ui_manifest()
 
 
 @router.post("/plugins/reload", response_model=List[PluginSummary])
@@ -144,27 +170,115 @@ async def get_models(provider_name: str) -> ModelListResponse:
 # ---------------------------------------------------------------- test suite
 
 
-@router.get("/tests", response_model=TestSuiteResponse)
-async def get_tests() -> TestSuiteResponse:
-    tests = [TestPrompt(**prompt) for prompt in list_tests()]
-    return TestSuiteResponse(tests=tests, directory=str(TESTS_DIR))
+def _as_prompt(entry: Dict[str, str]) -> TestPrompt:
+    return TestPrompt(
+        filename=entry["filename"],
+        title=entry["title"],
+        prompt=entry["prompt"],
+        suite=entry.get("suite", ""),
+        id=entry.get("id", ""),
+    )
 
 
-@router.put("/tests", response_model=TestSuiteResponse)
-async def put_tests(payload: SaveSuiteRequest) -> TestSuiteResponse:
+def _summary(suite) -> SuiteSummary:
+    return SuiteSummary(
+        slug=suite.slug,
+        name=suite.name,
+        description=suite.description,
+        order=suite.order,
+        builtin=suite.builtin,
+        count=suite.count,
+    )
+
+
+def _guard_active_run(action: str) -> None:
     if run_manager.active() is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="A run is in progress. Wait for it to finish before editing the suite.",
+            detail=f"A run is in progress. Wait for it to finish before {action}.",
         )
+
+
+@router.get("/suites", response_model=List[SuiteSummary])
+async def get_suites() -> List[SuiteSummary]:
+    """Every suite, built-ins first."""
+    return [_summary(suite) for suite in list_suites()]
+
+
+@router.get("/suites/{slug}", response_model=SuiteDetail)
+async def get_suite_detail(slug: str) -> SuiteDetail:
     try:
-        tests = save_suite([draft.prompt for draft in payload.tests])
+        suite = get_suite(slug)
+        tests = load_suite_prompts(slug)
+    except SuiteError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return SuiteDetail(**_summary(suite).model_dump(), tests=[_as_prompt(t) for t in tests])
+
+
+@router.post("/suites", response_model=SuiteDetail, status_code=status.HTTP_201_CREATED)
+async def post_suite(payload: SuiteCreateRequest) -> SuiteDetail:
+    try:
+        suite = create_suite(payload.name, payload.description, payload.slug)
     except SuiteError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return SuiteDetail(**_summary(suite).model_dump(), tests=[])
 
-    return TestSuiteResponse(
-        tests=[TestPrompt(**prompt) for prompt in tests],
-        directory=str(TESTS_DIR),
+
+@router.put("/suites/{slug}", response_model=SuiteDetail)
+async def put_suite(slug: str, payload: SuiteUpdateRequest) -> SuiteDetail:
+    try:
+        suite = update_suite(slug, name=payload.name, description=payload.description)
+    except ReadOnlySuiteError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except SuiteError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return SuiteDetail(
+        **_summary(suite).model_dump(),
+        tests=[_as_prompt(t) for t in load_suite_prompts(slug)],
+    )
+
+
+@router.delete("/suites/{slug}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_suite(slug: str) -> None:
+    _guard_active_run("deleting a suite")
+    try:
+        delete_suite(slug)
+    except ReadOnlySuiteError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except SuiteError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.put("/suites/{slug}/tests", response_model=SuiteDetail)
+async def put_suite_tests(slug: str, payload: SaveSuiteRequest) -> SuiteDetail:
+    _guard_active_run("editing questions")
+    try:
+        tests = save_suite_tests(slug, [draft.prompt for draft in payload.tests])
+        suite = get_suite(slug)
+    except ReadOnlySuiteError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except SuiteError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return SuiteDetail(**_summary(suite).model_dump(), tests=[_as_prompt(t) for t in tests])
+
+
+@router.post(
+    "/suites/{slug}/duplicate",
+    response_model=SuiteDetail,
+    status_code=status.HTTP_201_CREATED,
+)
+async def duplicate(slug: str, payload: SuiteDuplicateRequest) -> SuiteDetail:
+    """Clone any suite, built-in included, into an editable custom one.
+
+    This is what stops read-only from being a dead end.
+    """
+    try:
+        suite = duplicate_suite(slug, payload.name)
+    except SuiteError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return SuiteDetail(
+        **_summary(suite).model_dump(),
+        tests=[_as_prompt(t) for t in load_suite_prompts(suite.slug)],
     )
 
 
@@ -180,14 +294,14 @@ async def create_run(payload: RunRequest) -> RunResponse:
         )
 
     try:
-        prompts = find_tests(payload.filenames) if payload.filenames else list_tests()
+        prompts = resolve_selections(payload.selections, payload.filenames)
     except SuiteError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     if not prompts:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            detail="No questions in the suite. Add at least one in the Suite Builder.",
+            detail="No questions selected. Pick at least one suite in Testing Suites.",
         )
 
     def _resolve_label() -> str:

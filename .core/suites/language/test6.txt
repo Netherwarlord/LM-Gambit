@@ -1,0 +1,17 @@
+Translate the passage below into French and into Japanese.
+
+Passage:
+"Look, I'm not going to beat around the bush. The launch was a train wreck. Marketing dropped the ball, engineering was flying blind, and by the time anyone pulled the plug we were deep in the red. Still, we live and learn."
+
+Requirements:
+- Preserve the register. This is a blunt, informal remark from a manager to peers in a closed meeting. It is not a press release, and it is not crude.
+- Do not translate the idioms literally. For each idiomatic expression, use the natural equivalent in the target language.
+- Japanese must use an appropriate level of formality for this setting, and you must state which level you chose and why.
+
+After each translation, provide a table with the columns:
+English idiom | Your rendering | Literal back-translation | What was lost or gained
+
+Then answer:
+1. Which idiom has the weakest equivalent in each target language, and how did you compensate?
+2. "In the red" is an accounting metaphor. Does the color metaphor survive in both languages? Say what each language does instead if it does not.
+3. Which is harder to carry across, the idioms or the register? Defend your answer.

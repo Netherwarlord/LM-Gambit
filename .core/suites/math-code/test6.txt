@@ -1,0 +1,25 @@
+The function below produces correct output but is unacceptably slow on large inputs and uses more memory than necessary.
+
+def find_common_orders(orders_a, orders_b):
+    result = []
+    for a in orders_a:
+        for b in orders_b:
+            if a['id'] == b['id'] and a['id'] not in [r['id'] for r in result]:
+                result.append({'id': a['id'], 'total': a['total'] + b['total']})
+    return sorted(result, key=lambda r: r['id'])
+
+Both arguments are lists of dictionaries with the keys 'id' (int) and 'total' (float). Either list may contain repeated ids.
+
+Deliver:
+
+1. The current time complexity in big-O, with the reasoning for each nested cost. There is a hidden third loop — identify it and explain why it is easy to miss.
+
+2. A rewritten implementation that runs in O(n + m) plus the cost of the final sort, and produces identical output to the original for all inputs.
+
+3. State any behavioural difference your version introduces when the inputs contain duplicate ids. If the original's behaviour on duplicates is itself ambiguous or arguably a bug, say so explicitly and state which interpretation you implemented and why — do not silently pick one.
+
+4. Compare peak memory usage between the original and your version, in terms of n and m.
+
+5. Name the single change from your rewrite that delivers the largest share of the speedup, and estimate the speedup factor for n = m = 10,000.
+
+6. Write one test that passes on your version and would have been infeasibly slow on the original.

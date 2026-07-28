@@ -1,0 +1,18 @@
+Write a Python function with exactly this signature:
+
+def top_k_frequent(nums: list[int], k: int) -> list[int]:
+
+It returns the k most frequent elements in nums, ordered from most frequent to least frequent. Ties in frequency are broken by smaller integer value first.
+
+Constraints:
+- Average time complexity must be O(n log k) or better. A full O(n log n) sort of the frequency map is not acceptable.
+- Standard library only. No third-party packages.
+- Must correctly handle: an empty input list, k larger than the number of distinct elements, k <= 0, and negative integers.
+- Do not sort the entire frequency map.
+
+Deliver:
+1. The implementation, with type hints and a docstring stating the tie-breaking rule.
+2. A complexity analysis giving time and space in terms of n and k, and naming the data structure that achieves the bound. State clearly where the log k comes from.
+3. Five assert-based tests covering each edge case listed above.
+4. Explain what breaks in your heap comparison logic if the tie-breaking rule were changed to "larger value first," and give the one-line change that fixes it.
+5. State the one input shape for which your solution is NOT better than a plain sort, and why.

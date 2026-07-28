@@ -1,0 +1,15 @@
+Answer each item below using everyday physical and social knowledge. For each, give the answer, the mechanism, and the unstated assumption you had to supply.
+
+1. A sealed glass jar of honey and an identical sealed jar of water are left in a freezer overnight. In the morning one jar has cracked. Which one, and why?
+
+2. Someone carries a full open mug of coffee up a flight of stairs without spilling. Carrying the same mug down the same stairs, they spill. Why is descending worse?
+
+3. At a party, someone says "I'd love to, but I have an early morning." They are declining an invitation. What social convention makes this a refusal rather than a statement about their schedule? What would make the same words NOT a refusal?
+
+4. A smoke alarm chirps once every sixty seconds at 3 a.m. Is the house on fire? What is actually happening, and why does the failure mode present at that hour specifically?
+
+5. A recipe says to let a roast rest for fifteen minutes before slicing. What goes wrong if you skip it, and what is the physical mechanism?
+
+6. You put a metal spoon and a wooden spoon in the same pot of hot soup for the same length of time. Both are at the same temperature, but one feels far hotter. Explain why "feels hotter" and "is hotter" come apart here.
+
+Finally: which of these six requires social knowledge rather than physical knowledge, and which one requires both?

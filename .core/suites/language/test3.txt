@@ -1,0 +1,18 @@
+Rank the following four phrases by how close each is in meaning to the reference phrase, from closest to most distant.
+
+Reference: "The committee postponed the vote."
+
+Candidates:
+A. "The vote was delayed by the committee."
+B. "The committee cancelled the vote."
+C. "The council deferred the ballot."
+D. "The committee voted to postpone other business."
+
+For each candidate:
+- Give a similarity score from 0.00 to 1.00.
+- Give one sentence justifying the score.
+
+Then answer:
+1. Why are B and D traps? For each, name the specific surface feature (shared vocabulary, shared syntax) that makes it look closer than it actually is.
+2. C shares almost no words with the reference. Explain why lexical overlap is a poor proxy for meaning here.
+3. A is a voice alternation of the reference. Is it fully equivalent, or does the passive shift emphasis in a way that matters? Defend your answer.

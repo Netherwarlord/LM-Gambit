@@ -1,0 +1,18 @@
+Follow every constraint below exactly. Constraint compliance matters more than the quality of the content.
+
+Topic: the domestication of the horse.
+
+OUTPUT REQUIREMENTS
+- Output ONLY a single valid JSON object. No prose before or after it. No markdown code fence.
+- Top-level keys, in this exact order: "title", "sections", "word_count", "constraints_met".
+- "title" must be a string of exactly four words.
+- "sections" must be an array of exactly three objects, each having the keys "heading", "body", and "key_term" in that order.
+- The three headings must be, in order: "Origins", "Diffusion", "Consequences".
+- Each "body" must be between 55 and 65 words inclusive, and must contain no semicolons and no em dashes.
+- Each "key_term" must be a single word that appears verbatim in its own section's body.
+- The second section's body must contain exactly one number written in digits.
+- The third section's body must not contain the letter "z" anywhere.
+- "word_count" must be an integer equal to the sum of the three body word counts.
+- "constraints_met" must be an array of strings, one entry per constraint listed above, each naming the constraint and stating specifically how you satisfied it.
+
+If any two constraints conflict, satisfy the one listed earlier and record the conflict inside "constraints_met". Do not silently drop a constraint.

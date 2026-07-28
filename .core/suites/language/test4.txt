@@ -1,0 +1,13 @@
+Resolve every referring expression in the passage below.
+
+Passage:
+"The trophy would not fit in the brown suitcase because it was too large. Marta handed it to Dylan anyway, and he wedged it under the seat. When the conductor asked about it, she said it belonged to her sister, who had won it in Lisbon the year before. He did not believe her."
+
+For each pronoun and definite noun phrase, state:
+- The referent.
+- The single strongest cue that determines it (syntactic position, world knowledge, discourse recency, or gender agreement).
+
+Additional requirements:
+1. The first "it" is a classic Winograd case. State the referent, and then state what the referent would become if "large" were changed to "small" — and explain what that swap demonstrates about how the ambiguity is resolved.
+2. Where a reference is genuinely ambiguous, say so and give both readings. Do not silently pick one.
+3. Identify which single referring expression in this passage is the hardest to resolve, and why.

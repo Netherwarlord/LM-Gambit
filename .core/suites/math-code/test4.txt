@@ -1,0 +1,26 @@
+The Python function below is intended to return the n-th Fibonacci number, with F(0) = 0 and F(1) = 1. It does not work correctly.
+
+def fib(n):
+    if n <= 0:
+        return 0
+    a, b = 0, 1
+    for i in range(n):
+        a = b
+        b = a + b
+    return a
+
+Do all of the following.
+
+1. Trace the function by hand and state exactly what it returns for n = 0, 1, 2, 3, 4, 5, and 6. Show the values of a and b after each loop iteration for n = 4.
+
+2. State the closed-form pattern the buggy function actually computes for n >= 1.
+
+3. Identify the precise line that is wrong and name the underlying programming concept that explains the failure. "The math is off" is not an acceptable answer.
+
+4. Give the minimal fix. Change as little as possible — do not rewrite the function from scratch, and do not add lines if one can be changed.
+
+5. Confirm the fix by re-tracing n = 6.
+
+6. After your fix, is the loop bound `range(n)` still correct given the F(0)=0, F(1)=1 convention? Either identify a remaining off-by-one problem or state confidently that there is none. Do not invent a second bug if none exists.
+
+7. Write three assert-based test cases that would have caught the original bug, including at least one boundary case, and explain what each one covers.

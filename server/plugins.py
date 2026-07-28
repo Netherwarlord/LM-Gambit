@@ -53,6 +53,7 @@ def build_test_record(
         total=total,
         title=outcome.title,
         filename=outcome.filename,
+        suite=outcome.suite,
         prompt=prompt_text,
         ok=outcome.status == "ok",
         response=outcome.response,
@@ -65,14 +66,17 @@ def build_test_record(
 def build_run_record(
     run: "RunState",
     *,
-    prompts_by_filename: Dict[str, str],
+    prompts_by_id: Dict[str, str],
     report_path: Optional[Path] = None,
 ) -> RunRecord:
+    # Keyed by qualified "<suite>/<file>" ID. Looking a prompt up by bare
+    # filename would hand a grader the wrong question's text whenever two
+    # suites in one run share a filename, which is the common case.
     tests = [
         build_test_record(
             outcome,
             total=run.total,
-            prompt_text=prompts_by_filename.get(outcome.filename, ""),
+            prompt_text=prompts_by_id.get(outcome.question_id, ""),
         )
         for outcome in run.outcomes
     ]

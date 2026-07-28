@@ -1,0 +1,22 @@
+A team must complete the tasks below before a product ships. Durations are in working days. Assume unlimited parallel staffing.
+
+A. Draft specification — 4 days — no prerequisites
+B. Legal review — 6 days — requires A
+C. Build prototype — 10 days — requires A
+D. Order long-lead components — 15 days — requires A
+E. Assemble unit — 3 days — requires C and D
+F. Safety certification — 8 days — requires E and B
+G. Write documentation — 5 days — requires C
+H. Package and ship — 2 days — requires F and G
+
+Answer all of the following, showing your work.
+
+1. Compute the earliest start and earliest finish for every task. Present this as a table.
+2. The minimum number of working days from project start to ship.
+3. The critical path, written as a task sequence.
+4. The slack (float) on task B and on task G.
+5. If task D slips by 3 days, does the ship date move? By how much? Show why.
+6. If instead task G slips by 3 days, does the ship date move? Explain the difference between this case and the previous one.
+7. You may shorten exactly one task. Which one compresses the schedule most, and what becomes the new bottleneck once you do?
+
+Then state one real-world assumption baked into "unlimited parallel staffing" that would change your answer if relaxed.

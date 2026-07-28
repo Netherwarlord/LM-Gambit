@@ -3,7 +3,7 @@
 *Source:* `{{SOURCE_FILENAME}}`
 
 ### Prompt:
-```swift
+```text
 {{PROMPT_CONTENT}}
 ```
 

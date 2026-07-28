@@ -13,7 +13,20 @@ If a hook raises, LM-Gambit logs it and carries on. Your plugin stays loaded
 and its other hooks keep firing, so a bug in one grader can't break a run.
 """
 
-from plugin_api import Grade, RunRecord, TestRecord
+from plugin_api import (
+    Action,
+    Grade,
+    Markdown,
+    NavItem,
+    Page,
+    Panel,
+    RunRecord,
+    SlotPanel,
+    Stat,
+    StatRow,
+    Table,
+    TestRecord,
+)
 
 # --------------------------------------------------------------------------
 # Metadata — all optional. NAME is what shows up in Settings → Plugins.
@@ -58,7 +71,9 @@ def grade(test: TestRecord):
         test.index                 1-based position in the run
         test.total                 how many questions the run covers
         test.title                 first line of the prompt
-        test.filename              e.g. "test3.txt"
+        test.filename              e.g. "test3.txt" — NOT unique across suites
+        test.suite                 owning suite slug, e.g. "math-code"
+        test.question_id           "<suite>/<file>" — the unique identifier
         test.prompt                the full prompt text sent to the model
         test.ok                    False if the provider errored
         test.response              the model's answer (None when ok is False)
@@ -154,8 +169,104 @@ def register_routes(router) -> None:
     For a plugin saved as `plugins/my_plugin.py`, the route below is served at
     /api/plugins/my_plugin/ping. Routes are registered when the server starts,
     so adding or changing them requires a restart.
+
+    Careful: reloading does not rebind routes. These handlers close over the
+    module object that existed at startup, so after a plugin reload the new
+    module handles grade() while these routes still read the old module's
+    globals — serving stale state with no error to warn you. Restart the
+    server after editing a plugin that defines this hook.
     """
 
     @router.get("/ping")
     async def ping() -> dict:
         return {"plugin": NAME, "version": VERSION, "status": "ok"}
+
+    @router.get("/stats")
+    async def stats() -> dict:
+        """Shape a StatRow(source=...) expects back."""
+        return {
+            "stats": [
+                {"label": "Checked", "value": 12, "hint": "this run", "tone": "good"},
+                {"label": "Problems", "value": 0, "hint": "none found", "tone": "default"},
+            ]
+        }
+
+    @router.post("/reset")
+    async def reset() -> dict:
+        """`message` raises a toast; `refresh` re-fetches sibling blocks."""
+        return {"message": "Reset done.", "refresh": True}
+
+
+# --------------------------------------------------------------------------
+# UI — add pages, nav entries and panels
+# --------------------------------------------------------------------------
+
+
+def ui_contributions():
+    """Describe interface for the app to render. Return a list, or None.
+
+    You describe UI as *data* — never as code — so a plugin never ships
+    JavaScript and the frontend is never rebuilt to install one.
+
+    Blocks:
+        StatRow(stats=[Stat(...)])   a row of headline numbers
+        Table(columns=[], rows=[])   a column-headed table
+        Markdown(text="...")         rendered markdown
+        Action(label=, post=)        a button that POSTs to one of your routes
+        Panel(title=, blocks=[])     a titled card wrapping other blocks
+
+    Every data block accepts either inline values or `source="/api/plugins/..."`,
+    which it fetches and re-fetches when an Action returns {"refresh": True}.
+
+    Surfaces:
+        NavItem   an entry in the left rail
+        Page      a full page of your own
+        SlotPanel a panel injected into a built-in page. Valid slots are
+                  run.aside, reports.aside, suite.aside and settings.section
+
+    Paths are namespaced under /x/<slug>/, so "/tool" below is served at
+    /x/my_plugin/tool and cannot collide with another plugin or a core route.
+
+    Full reference, including the icon names, lives in the app at /docs.
+    """
+    base = "/api/plugins/my_plugin"
+
+    return [
+        NavItem(label="My tool", path="/tool", icon="wrench", hint="What it does", order=50),
+        Page(
+            path="/tool",
+            title="My tool",
+            subtitle="One line about what this page shows.",
+            blocks=[
+                # Live numbers, re-fetched from your own endpoint.
+                StatRow(source=f"{base}/stats"),
+                Panel(
+                    title="Details",
+                    blocks=[
+                        Table(
+                            columns=["Question", "Result"],
+                            rows=[[1, "ok"], [2, "ok"]],
+                            empty="Run the suite to populate this.",
+                        ),
+                        Action(
+                            label="Reset",
+                            post=f"{base}/reset",
+                            style="ghost",
+                            icon="refresh",
+                            confirm="Discard everything collected so far?",
+                        ),
+                    ],
+                ),
+                Panel(title="Notes", blocks=[Markdown(text="Supports **markdown**.")]),
+            ],
+        ),
+        # A compact summary alongside the live run feed.
+        SlotPanel(
+            slot="run.aside",
+            order=50,
+            panel=Panel(
+                title="My tool",
+                blocks=[StatRow(stats=[Stat(label="Ready", value="yes", tone="good")])],
+            ),
+        ),
+    ]

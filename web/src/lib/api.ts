@@ -14,11 +14,29 @@ export interface TestPrompt {
   filename: string
   title: string
   prompt: string
+  /** Owning suite slug. */
+  suite: string
+  /** Globally unique "<suite>/<file>". `filename` repeats across suites. */
+  id: string
 }
 
-export interface TestSuite {
+export interface SuiteSummary {
+  slug: string
+  name: string
+  description: string
+  order: number
+  builtin: boolean
+  count: number
+}
+
+export interface SuiteDetail extends SuiteSummary {
   tests: TestPrompt[]
-  directory: string
+}
+
+/** One suite's contribution to a run; omit `filenames` to take all of it. */
+export interface RunSelection {
+  suite: string
+  filenames?: string[]
 }
 
 export interface RunMetrics {
@@ -55,6 +73,94 @@ export interface PluginSummary {
   enabled: boolean
   hooks: string[]
   error: string | null
+}
+
+/* -------------------------------------------------------- plugin-declared UI */
+/* Plugins describe interface as data; this app renders it. Nothing here is
+ * plugin-supplied code — see /docs for the contribution vocabulary. */
+
+export interface PluginStat {
+  label: string
+  value: string | number
+  hint: string
+  tone: 'default' | 'good' | 'warn' | 'bad'
+}
+
+export interface StatRowBlock {
+  kind: 'stat_row'
+  stats: PluginStat[]
+  source: string | null
+}
+
+export interface TableBlock {
+  kind: 'table'
+  columns: string[]
+  rows: (string | number)[][]
+  source: string | null
+  empty: string
+}
+
+export interface MarkdownBlock {
+  kind: 'markdown'
+  text: string
+  source: string | null
+}
+
+export interface ActionBlock {
+  kind: 'action'
+  label: string
+  post: string
+  confirm: string | null
+  style: 'primary' | 'ghost' | 'danger'
+  icon: string | null
+}
+
+export interface PanelBlock {
+  kind: 'panel'
+  title: string
+  subtitle: string
+  blocks: PluginBlock[]
+}
+
+export type PluginBlock = StatRowBlock | TableBlock | MarkdownBlock | ActionBlock | PanelBlock
+
+export interface PluginNavItem {
+  slug: string
+  label: string
+  path: string
+  icon: string
+  hint: string
+  order: number
+}
+
+export interface PluginPageSpec {
+  slug: string
+  plugin: string
+  path: string
+  title: string
+  subtitle: string
+  blocks: PluginBlock[]
+}
+
+export interface PluginSlotPanel {
+  slug: string
+  plugin: string
+  order: number
+  panel: PanelBlock
+}
+
+export interface PluginUIManifest {
+  nav: PluginNavItem[]
+  pages: PluginPageSpec[]
+  slots: Record<string, PluginSlotPanel[]>
+}
+
+/** Plugin data URLs are confined to this app's own plugin namespace. */
+function assertPluginUrl(url: string): string {
+  if (!url.startsWith('/api/plugins/')) {
+    throw new ApiError(`Refusing to call ${url} — plugin URLs must start with /api/plugins/.`, 0)
+  }
+  return url
 }
 
 export type RunStatus = 'running' | 'completed' | 'failed' | 'cancelled'
@@ -205,17 +311,35 @@ export const api = {
       `/providers/${encodeURIComponent(provider)}/models`,
     ),
 
-  tests: () => request<TestSuite>('/tests'),
-  saveTests: (prompts: string[]) =>
-    request<TestSuite>('/tests', {
+  suites: () => request<SuiteSummary[]>('/suites'),
+  suite: (slug: string) => request<SuiteDetail>(`/suites/${encodeURIComponent(slug)}`),
+  createSuite: (body: { name: string; description?: string; slug?: string }) =>
+    request<SuiteDetail>('/suites', { method: 'POST', body: JSON.stringify(body) }),
+  updateSuite: (slug: string, body: { name?: string; description?: string }) =>
+    request<SuiteDetail>(`/suites/${encodeURIComponent(slug)}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  deleteSuite: (slug: string) =>
+    request<void>(`/suites/${encodeURIComponent(slug)}`, { method: 'DELETE' }),
+  saveSuiteTests: (slug: string, prompts: string[]) =>
+    request<SuiteDetail>(`/suites/${encodeURIComponent(slug)}/tests`, {
       method: 'PUT',
       body: JSON.stringify({ tests: prompts.map((prompt) => ({ prompt })) }),
+    }),
+  duplicateSuite: (slug: string, name?: string) =>
+    request<SuiteDetail>(`/suites/${encodeURIComponent(slug)}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
     }),
 
   startRun: (body: {
     provider: string
     model_id: string
     temperature: number
+    /** Suites to run, each optionally narrowed to some of its questions. */
+    selections?: RunSelection[]
+    /** Deprecated: flat qualified "<suite>/<file>" IDs. Prefer `selections`. */
     filenames?: string[]
   }) => request<Run>('/runs', { method: 'POST', body: JSON.stringify(body) }),
   runs: () => request<Run[]>('/runs'),
@@ -236,6 +360,16 @@ export const api = {
 
   plugins: () => request<PluginSummary[]>('/plugins'),
   reloadPlugins: () => request<PluginSummary[]>('/plugins/reload', { method: 'POST' }),
+  pluginUI: () => request<PluginUIManifest>('/plugins/ui'),
+
+  /** Read a block's `source`. The URL comes from a plugin, so it is checked. */
+  pluginData: <T>(url: string) => request<T>(assertPluginUrl(url).replace(/^\/api/, '')),
+  /** Fire an Action button. May return a message to toast and a refresh flag. */
+  pluginAction: (url: string) =>
+    request<{ message?: string; refresh?: boolean }>(assertPluginUrl(url).replace(/^\/api/, ''), {
+      method: 'POST',
+      body: '{}',
+    }),
 
   settings: () => request<Settings>('/settings'),
   saveSettings: (body: {

@@ -1,0 +1,18 @@
+A city public health department reports the following findings over a five-year period.
+
+A. Ice cream sales and drowning deaths rise and fall together, month over month (r = 0.86).
+B. Neighborhoods that received a new protected bike lane saw a 22% drop in cyclist injuries.
+C. Patients who received an experimental drug had higher mortality than patients who did not.
+D. Schools that adopted a new reading curriculum saw test scores rise 8 points. The district credits the curriculum.
+E. Hospitals with the best surgical outcomes are the ones that turn away the most complex cases.
+F. The 20 neighborhoods with the highest crime rates last year all saw crime fall this year without any intervention.
+
+For each finding:
+1. Name the most plausible causal structure: direct cause, reverse causation, confounding, collider or selection effect, or regression to the mean.
+2. Identify the specific lurking variable or mechanism.
+3. State the single cheapest study design or additional data point that would distinguish your explanation from the naive one.
+
+Then:
+- For finding C, explain confounding by indication in plain language a hospital administrator would understand.
+- For finding B, name the one selection effect that would most threaten the conclusion, and say what would rule it out.
+- Two of these six share the same underlying structure. Which two, and what is the shared structure?

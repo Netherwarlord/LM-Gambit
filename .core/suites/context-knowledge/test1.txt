@@ -1,0 +1,38 @@
+Read the company record below, then answer the questions at the end. Each answer requires combining facts stated in different sections. No single section contains a complete answer.
+
+--- BEGIN RECORD ---
+
+SECTION 1 — FOUNDING
+Meridian Instruments was incorporated in Rotterdam in March 1968 by Hendrik Voss and Clara Mbeki. Its first product was a bench-top spectrophotometer, the M-100, sold almost exclusively to university chemistry departments. Voss served as managing director from founding until 1981.
+
+SECTION 2 — EARLY PRODUCTS
+The M-100 was superseded by the M-220 in 1974. The M-220 introduced a dual-beam design and was the first Meridian instrument sold outside Europe. Its launch price was 14,000 guilders. Roughly 3,100 units shipped before the line was retired.
+
+SECTION 3 — LEADERSHIP
+Clara Mbeki became managing director in 1981 and held the post for nineteen years. Under her tenure the company opened offices in Osaka (1986) and Sao Paulo (1993). She was succeeded by Tomas Reyes.
+
+SECTION 4 — MANUFACTURING
+All instruments were assembled in Delft until 1989, when assembly moved to a larger site in Eindhoven. The Delft site was retained for calibration services only. In 2004 calibration was consolidated into Eindhoven and the Delft site was sold.
+
+SECTION 5 — REGULATORY
+In 1997 Meridian received ISO 9001 certification. A 2003 audit found nonconformities in the Sao Paulo office's documentation practices. Certification was suspended for eleven months and restored in 2004.
+
+SECTION 6 — LATER PRODUCTS
+The M-800 series launched in 1999 and remained in production for twelve years. It was the first Meridian product to include onboard data logging. The M-800 was assembled at the site that had been in use since 1989.
+
+SECTION 7 — FINANCIAL
+Revenue first exceeded 100 million guilders in 1992. The company converted its reporting currency to euros in 1999. Revenue in 2004 was 212 million euros.
+
+SECTION 8 — CORPORATE
+Meridian was acquired by Halberd Group in 2011, the same year the M-800 series ended production. Tomas Reyes remained through the transition and departed in 2013.
+
+--- END RECORD ---
+
+QUESTIONS
+
+1. Who was managing director when the Sao Paulo office opened, and how many years into their tenure was it?
+2. In which city was the M-800 assembled? State the chain of sentences that establishes this, since no sentence names it directly.
+3. The ISO suspension concerned an office opened under which managing director, and how many years after that office opened did the suspension occur?
+4. In which single year did the company both regain ISO certification and consolidate calibration into one site?
+5. In what year was a Meridian product first sold outside Europe, and which managing director was in post at the time?
+6. One of the following is determinable from this record and one is not: the M-800's launch price, or the number of years Voss served as managing director. State which is which. Give the determinable one, and do NOT guess the other.

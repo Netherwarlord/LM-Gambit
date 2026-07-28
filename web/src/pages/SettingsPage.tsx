@@ -26,6 +26,7 @@ import {
   useAsync,
   useToast,
 } from '../components/ui'
+import { PluginSlot } from '../components/PluginBlocks'
 import { api, ApiError, type ModelPathEntry, type PluginSummary } from '../lib/api'
 import { cx } from '../lib/format'
 
@@ -203,6 +204,7 @@ export function SettingsPage() {
           </div>
 
           <div className="space-y-5 xl:col-span-5">
+            <PluginSlot slot="settings.section" />
             <Card>
               <CardHeader title="Engine" icon={<Cpu size={14} />} />
               <div className="p-4">

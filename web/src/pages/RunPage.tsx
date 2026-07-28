@@ -28,6 +28,13 @@ import {
 } from '../components/ui'
 import { Markdown } from '../components/Markdown'
 import { ScoreBadge, scoreTone } from '../components/ScoreBadge'
+import { PluginSlot } from '../components/PluginBlocks'
+import {
+  SuitePicker,
+  countSelected,
+  selectionsFrom,
+  useDefaultPicks,
+} from '../components/SuitePicker'
 import { Link } from '../lib/router'
 import { api, ApiError, type TestCompletedEvent } from '../lib/api'
 import { clockTime, cx, formatDuration } from '../lib/format'
@@ -38,12 +45,11 @@ export function RunPage() {
   const { run, outcomes, logs, starting, isLive, start, cancel, clear } = useRunFeed()
 
   const providers = useAsync(() => api.providers(), [])
-  const suite = useAsync(() => api.tests(), [])
+  const suites = useAsync(() => api.suites(), [])
 
   const [provider, setProvider] = useState('')
   const [modelId, setModelId] = useState('')
   const [temperature, setTemperature] = useState(0.1)
-  const [selected, setSelected] = useState<string[] | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
 
   // Seed provider + temperature from saved settings, falling back to the
@@ -72,25 +78,23 @@ export function RunPage() {
     setModelId((current) => (list.some((m) => m.id === current) ? current : (list[0]?.id ?? '')))
   }, [models.data])
 
-  const tests = suite.data?.tests ?? []
-  const selectedFilenames = selected ?? tests.map((t) => t.filename)
-  const allSelected = selectedFilenames.length === tests.length
+  const suiteList = suites.data ?? []
+  const [picks, setPicks] = useDefaultPicks(suiteList)
 
-  const toggleTest = (filename: string) => {
-    const next = new Set(selectedFilenames)
-    if (next.has(filename)) next.delete(filename)
-    else next.add(filename)
-    setSelected(tests.filter((t) => next.has(t.filename)).map((t) => t.filename))
-  }
+  const selectedCount = countSelected(picks, suiteList)
+  const totalCount = suiteList.reduce((sum, s) => sum + s.count, 0)
+  const pickedSuites = Object.keys(picks).length
 
   const launch = async () => {
     if (!provider || !modelId) return
     try {
+      // Sent as `selections`, so "all of a suite" stays all of it even if that
+      // suite gains a question between now and the next run.
       await start({
         provider,
         model_id: modelId,
         temperature,
-        filenames: allSelected ? undefined : selectedFilenames,
+        selections: selectionsFrom(picks),
       })
     } catch (cause) {
       toast(cause instanceof ApiError ? cause.message : String(cause), 'error')
@@ -105,8 +109,7 @@ export function RunPage() {
     }
   }
 
-  const canLaunch =
-    !!provider && !!modelId && selectedFilenames.length > 0 && !isLive && !starting
+  const canLaunch = !!provider && !!modelId && selectedCount > 0 && !isLive && !starting
 
   return (
     <>
@@ -189,92 +192,72 @@ export function RunPage() {
             </div>
           </Card>
 
-          {/* question selection */}
+          {/* suite + question selection */}
           <Card raised>
             <CardHeader
-              title="Questions"
+              title="Suites"
               icon={<ListChecks size={14} />}
               actions={
                 <span className="chip chip-gold num">
-                  {selectedFilenames.length}/{tests.length}
+                  {selectedCount}/{totalCount}
                 </span>
               }
             />
             <div className="p-4">
-              {suite.error && <ErrorNote message={suite.error} onRetry={suite.reload} />}
+              {suites.error && <ErrorNote message={suites.error} onRetry={suites.reload} />}
 
-              {!suite.error && tests.length === 0 && !suite.loading && (
+              {!suites.error && suiteList.length === 0 && !suites.loading && (
                 <EmptyState
                   icon={<ListChecks size={20} />}
-                  title="No questions yet"
-                  description="Add questions in the Suite Builder before running diagnostics."
+                  title="No suites found"
+                  description="Create a suite before running diagnostics."
                   action={
                     <Link to="/suite" className="btn btn-primary">
-                      Open Suite Builder
+                      Open Testing Suites
                     </Link>
                   }
                 />
               )}
 
-              {tests.length > 0 && (
+              {suiteList.length > 0 && (
                 <>
                   <div className="mb-3 flex items-center gap-2">
                     <button
                       className="btn btn-ghost btn-sm"
                       disabled={isLive}
-                      onClick={() => setSelected(allSelected ? [] : tests.map((t) => t.filename))}
+                      onClick={() =>
+                        setPicks(
+                          pickedSuites === suiteList.length
+                            ? {}
+                            : Object.fromEntries(suiteList.map((s) => [s.slug, 'all' as const])),
+                        )
+                      }
                     >
-                      {allSelected ? 'Clear all' : 'Select all'}
+                      {pickedSuites === suiteList.length ? 'Clear all' : 'Select all'}
                     </button>
                     <button
                       className="btn btn-ghost btn-sm"
                       onClick={() => setPickerOpen((open) => !open)}
                     >
                       {pickerOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                      {pickerOpen ? 'Hide list' : 'Choose questions'}
+                      {pickerOpen ? 'Hide suites' : 'Choose suites'}
                     </button>
                   </div>
 
-                  {pickerOpen && (
-                    <ul className="animate-fade-in max-h-72 space-y-1 overflow-y-auto pr-1">
-                      {tests.map((test, index) => {
-                        const checked = selectedFilenames.includes(test.filename)
-                        return (
-                          <li key={test.filename}>
-                            <label
-                              className={cx(
-                                'flex cursor-pointer items-start gap-2.5 rounded-lg border px-2.5 py-2 transition-colors',
-                                checked
-                                  ? 'border-gold-500/35 bg-gold-500/8'
-                                  : 'border-navy-700 bg-navy-900/30 hover:border-navy-600',
-                                isLive && 'cursor-not-allowed opacity-60',
-                              )}
-                            >
-                              <input
-                                type="checkbox"
-                                className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[#e3ad46]"
-                                checked={checked}
-                                disabled={isLive}
-                                onChange={() => toggleTest(test.filename)}
-                              />
-                              <span className="min-w-0">
-                                <span className="num mr-1.5 text-[0.6875rem] text-ink-500">
-                                  {String(index + 1).padStart(2, '0')}
-                                </span>
-                                <span className="text-[0.75rem] text-ink-200">{test.title}</span>
-                              </span>
-                            </label>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-
-                  {!pickerOpen && (
-                    <p className="text-[0.75rem] text-ink-500">
-                      {allSelected
-                        ? `The full suite of ${tests.length} questions will run in order.`
-                        : `${selectedFilenames.length} of ${tests.length} questions selected.`}
+                  {pickerOpen ? (
+                    <div className="animate-fade-in max-h-96 overflow-y-auto pr-1">
+                      <SuitePicker
+                        suites={suiteList}
+                        picks={picks}
+                        onChange={setPicks}
+                        disabled={isLive}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-[0.75rem] leading-relaxed text-ink-500">
+                      {selectedCount === 0
+                        ? 'Nothing selected — pick at least one suite.'
+                        : `${selectedCount} question${selectedCount === 1 ? '' : 's'} from ${pickedSuites} suite${pickedSuites === 1 ? '' : 's'}, run in order.`}
                     </p>
                   )}
                 </>
@@ -295,6 +278,8 @@ export function RunPage() {
               </button>
             )}
           </div>
+
+          <PluginSlot slot="run.aside" autoRefreshMs={isLive ? 4000 : undefined} />
         </div>
 
         {/* ------------------------------------------------------ live feed */}

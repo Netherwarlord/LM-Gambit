@@ -1,0 +1,17 @@
+Solve the following. Show the algebra explicitly. Do not guess and check.
+
+PROBLEM 1 — Mixture
+A chemist has two saline solutions: one at 12% salt by volume, one at 30% salt by volume. She needs 4.5 litres of a 20% solution.
+1. Define your variables and set up the system of equations.
+2. Solve for the volume of each stock solution required.
+3. Verify your answer by substituting back into both equations.
+
+PROBLEM 2 — Rate
+A boat travels 48 km downstream in 3 hours and returns the same 48 km upstream in 4 hours.
+4. Find the boat's speed in still water and the speed of the current. Show both equations.
+
+PROBLEM 3 — The same setup, altered
+5. Now suppose the return trip upstream took 2 hours instead of 4, with the downstream trip unchanged at 3 hours. Solve the system again.
+6. Interpret the result. If it is physically impossible or inconsistent with the way the problem is described, say so explicitly and explain what the number actually means. Do not report it as a plain answer as though nothing were wrong.
+
+Finally: state the general condition on the two travel times that must hold for this class of problem to have a physically sensible solution.
