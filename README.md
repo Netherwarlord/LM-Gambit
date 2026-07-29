@@ -32,6 +32,23 @@ The `auto-test.py` CLI still drives the same engine the web interface does.
 - Node.js 20+ and npm (only to build the interface)
 - macOS, Linux or Windows — Apple Silicon, NVIDIA, AMD or CPU-only
 
+### From a release archive
+
+Download the archive for your platform from
+[Releases](../../releases), extract it, and run the launcher inside:
+`LM-Gambit.bat` on Windows, `./LM-Gambit.sh` on macOS and Linux. It creates a
+virtual environment and installs dependencies on first run — a few minutes,
+once — then starts the app. The interface is prebuilt, so Node is not needed.
+
+Python 3.10+ still has to be on the machine. The archive is not a frozen
+binary, and that is deliberate: `llama-cpp-python` compiles its GPU backend in
+at install time, so anything prebuilt would lock every user to whatever
+hardware the build machine had. Installing on your machine lets pip pick the
+matching build. See `GPU-ACCELERATION.md` in the archive for CUDA, Metal
+and ROCm.
+
+### From source
+
 ```bash
 python -m pip install -r requirements.txt
 cd web && npm install && npm run build && cd ..
@@ -444,6 +461,37 @@ cd web && npm run dev          # terminal 2 — UI on :5173 with hot reload
 
 Vite proxies `/api` (including the event stream) through to the Python server, so both run
 from one origin.
+
+---
+
+## Building a release
+
+```bash
+python packaging/build.py                     # archive for the current platform
+python packaging/build.py --platform linux    # or windows / macos
+python packaging/build.py --skip-web          # reuse an existing web/dist
+```
+
+Output lands in `dist/` — `.zip` for Windows, `.tar.gz` for macOS and Linux.
+The script is stdlib-only, so it runs before any dependency is installed, and
+it can cross-build: a Linux tarball produced on Windows is byte-for-byte
+equivalent to one produced on Linux, including the executable bit on
+`LM-Gambit.sh` (Windows has no execute bit, so the mode is written into the
+archive metadata rather than read off the filesystem).
+
+Only files `git ls-files` reports get copied, plus `web/dist`. Local models,
+results, settings and virtual environments cannot leak into an archive even
+if they are sitting in the working tree.
+
+**Via GitHub Actions** — `.github/workflows/release.yml` builds all three on
+`windows-latest`, `ubuntu-latest` and `macos-latest`. Pushing a `v*` tag builds
+the archives and opens a **draft** release with them attached; `workflow_dispatch`
+builds and uploads artifacts without creating a release, which is the way to
+test the pipeline.
+
+```bash
+git tag v2.0.0 && git push origin v2.0.0
+```
 
 ---
 

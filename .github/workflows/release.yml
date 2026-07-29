@@ -1,0 +1,79 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            artifact: "*.zip"
+          - os: ubuntu-latest
+            platform: linux
+            artifact: "*.tar.gz"
+          - os: macos-latest
+            platform: macos
+            artifact: "*.tar.gz"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      # build.py copies only what "git ls-files" reports, so it needs real
+      # history rather than a tarball export.
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # No pip install: build.py is stdlib-only, deliberately, so the release
+      # path cannot be broken by a dependency it does not ship.
+      - name: Build archive
+        run: python packaging/build.py --platform ${{ matrix.platform }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LM-Gambit-${{ matrix.platform }}
+          path: dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  publish:
+    # Tag pushes publish; manual runs stop at the artifacts above, so the
+    # workflow stays usable for a dry run without creating a release.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          draft: true
+          generate_release_notes: true
+          body: |
+            Download the archive for your platform, extract it, and run the
+            launcher inside — `LM-Gambit.bat` on Windows, `./LM-Gambit.sh` on
+            macOS and Linux.
+
+            The first run creates a virtual environment and installs
+            dependencies; that takes a few minutes and happens once. It needs
+            **Python 3.10 or newer** on the machine. See `GPU-ACCELERATION.md`
+            in the archive for CUDA, Metal and ROCm.

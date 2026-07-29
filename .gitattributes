@@ -1,0 +1,9 @@
+# Shell scripts must keep LF endings even when checked out on Windows.
+# packaging/build.py copies the launcher straight out of the working tree, so a
+# CRLF checkout would ship "#!/usr/bin/env bash\r" inside the Linux and macOS
+# tarballs — which fails at exec with "bad interpreter: ...^M". Cross-building
+# from Windows is a supported path, so this cannot be left to core.autocrlf.
+*.sh text eol=lf
+
+# The Windows launcher wants the opposite; old cmd.exe parsers mishandle LF.
+*.bat text eol=crlf

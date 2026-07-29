@@ -18,6 +18,10 @@ ENV/
 # Ignore other build artifacts
 *.egg-info/
 
+# Release archives from packaging/build.py. Root-anchored so it cannot swallow
+# .core/suites or any future nested "dist" that is real source.
+/dist/
+
 # Frontend
 web/node_modules/
 web/dist/
