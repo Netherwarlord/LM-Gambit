@@ -29,6 +29,13 @@ DEFAULT_ACTIONS_URL = https://github.com
 Public repositories clone anonymously, so a locked or absent GitHub account does
 not affect this. Restart Gitea afterwards.
 
+**Pin `actions/upload-artifact` to v3.** From v4 the action refuses to run
+against any host that is not github.com — it treats everything else as GitHub
+Enterprise and aborts with `GHESNotSupportedError` before uploading anything.
+The check lives inside the action, so Gitea's own artifact support is
+irrelevant; v4 cannot work here at any Gitea version. The same applies to
+`download-artifact`.
+
 ## 2. Register a runner
 
 Get a registration token from **Site Administration → Actions → Runners**, then:

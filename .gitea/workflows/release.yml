@@ -56,9 +56,14 @@ jobs:
       # listed, and then destroyed with the job container, so nobody can open
       # one. On a tag the archives reach the release instead, which is why this
       # is scoped to the tagless path.
+      # v3, not v4, and this is not a version to "modernise" later. From v4 the
+      # action refuses to run against any host that is not github.com — it
+      # classifies everything else as GHES and aborts with
+      # "GHESNotSupportedError" before uploading a byte. That is a check inside
+      # the action, so no amount of Gitea-side artifact support changes it.
       - name: Upload archives for inspection
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: LM-Gambit-archives
           path: dist/LM-Gambit-*
