@@ -300,6 +300,18 @@ Reports are written to `results/automated_report_<model>.md`.
 
 ---
 
+## Tests
+
+```bash
+python tests_py/run_all.py     # 195 assertions, no dependencies
+cd web && npm test             # 29 UI assertions
+```
+
+`tests_py/test_api.py` needs a running server and skips cleanly without one.
+Details in [`tests_py/README.md`](tests_py/README.md).
+
+---
+
 ## Project structure
 
 ```
@@ -320,6 +332,7 @@ server/                 FastAPI backend wrapping the engine
 plugins/                Drop-in plugins — _skeleton.py is the starter template
 plugin_api.py           Stable types plugins import
 plugin_system.py        Plugin discovery and hook dispatch
+tests_py/               Python tests — python tests_py/run_all.py
 web/                    React + TypeScript interface (Vite)
 models/                 Drop .gguf or MLX weights here (auto-discovered)
 .core/suites/<slug>/    Built-in suites, read-only
