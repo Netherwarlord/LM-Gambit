@@ -60,17 +60,38 @@ if errorlevel 1 (
 
 echo Installing dependencies...
 "%VENV%\Scripts\python.exe" -m pip install --quiet --upgrade pip
-"%VENV%\Scripts\python.exe" -m pip install -r "%~dp0requirements.txt"
+
+rem llama-cpp-python ships only an sdist to PyPI, so a plain install compiles
+rem it from source. On Windows that needs nmake and cl.exe on PATH, and those
+rem exist only inside a Visual Studio developer shell -- which nobody
+rem double-clicking a launcher is in. Installing Build Tools does NOT put them
+rem on the system PATH, so the compile fails identically afterwards.
+rem
+rem The upstream index below carries prebuilt win_amd64 wheels, so the normal
+rem case never compiles at all. It is the same index GPU-ACCELERATION.md uses
+rem for the CUDA builds.
+"%VENV%\Scripts\python.exe" -m pip install -r "%~dp0requirements.txt" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 if errorlevel 1 (
     echo.
     echo Dependency installation failed.
     echo.
-    echo The usual culprit is llama-cpp-python, which compiles from source when
-    echo no prebuilt wheel matches this platform. That needs Visual Studio
-    echo Build Tools with the "Desktop development with C++" workload:
-    echo   https://visualstudio.microsoft.com/visual-cpp-build-tools/
+    echo If the error above mentions llama-cpp-python, nmake, or
+    echo CMAKE_C_COMPILER, then pip could not find a prebuilt wheel and fell
+    echo back to compiling from source.
     echo.
-    echo The setup is resumable - run this again once that is installed.
+    echo Note that installing Visual Studio Build Tools is not enough on its
+    echo own - it does not add the compiler to your PATH. You have to start
+    echo this launcher from a developer shell instead:
+    echo.
+    echo   Start menu -^> "x64 Native Tools Command Prompt for VS 2022"
+    echo   cd /d "%~dp0"
+    echo   LM-Gambit.bat
+    echo.
+    echo Build Tools, if you do not have them:
+    echo   https://visualstudio.microsoft.com/visual-cpp-build-tools/
+    echo   ^(select the "Desktop development with C++" workload^)
+    echo.
+    echo The setup is resumable - run this again once that is sorted.
     echo.
     rmdir /s /q "%VENV%" 2>nul
     pause
