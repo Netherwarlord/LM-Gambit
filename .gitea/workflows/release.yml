@@ -44,7 +44,12 @@ jobs:
         env:
           GITEA_URL: ${{ github.server_url }}
           GITEA_REPOSITORY: ${{ github.repository }}
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          # Secret is named RELEASE_TOKEN, not GITEA_TOKEN: Gitea rejects any
+          # secret name starting with GITEA_ or GITHUB_, since both prefixes
+          # are reserved for its own built-in variables. The env var on the
+          # left is unaffected — that's just the name publish_gitea.py reads
+          # from os.environ, and can be anything.
+          GITEA_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         # Leaves a draft. Review the archives, then publish from the web UI, or
         # add --publish here once you trust the pipeline.
         run: >-

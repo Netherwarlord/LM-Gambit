@@ -502,7 +502,7 @@ git tag v2.0.0 && git push origin v2.0.0
 The Gitea one needs only a single runner because the cross-build makes the
 archives independent of build host — see
 [packaging/GITEA-SETUP.md](packaging/GITEA-SETUP.md) for runner registration and
-the `GITEA_TOKEN` secret. `publish_gitea.py` is stdlib-only and idempotent:
+the `RELEASE_TOKEN` secret. `publish_gitea.py` is stdlib-only and idempotent:
 re-running on the same tag replaces assets rather than duplicating them.
 
 ---

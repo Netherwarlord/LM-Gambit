@@ -69,15 +69,30 @@ EOF
         exit 1
     fi
 
+    # llama-cpp-python ships only an sdist to PyPI, so a plain install compiles
+    # it from source. On Linux that means a full toolchain and a long wait, and
+    # the upstream index below carries prebuilt manylinux wheels instead.
+    #
+    # Deliberately NOT used on macOS. The PyPI wheel there already carries
+    # Metal support, and adding a CPU-only index risks pip picking it on a tie,
+    # quietly costing every Apple Silicon user their GPU for no visible reason.
+    if [ "$(uname -s)" = "Linux" ]; then
+        PIP_INDEX="--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu"
+    else
+        PIP_INDEX=""
+    fi
+
     echo "Installing dependencies..."
     "$VENV/bin/python" -m pip install --quiet --upgrade pip
-    if ! "$VENV/bin/python" -m pip install -r "$HERE/requirements.txt"; then
+    # shellcheck disable=SC2086  # intentional word splitting; the URL has no spaces
+    if ! "$VENV/bin/python" -m pip install $PIP_INDEX -r "$HERE/requirements.txt"; then
         cat >&2 <<EOF
 
 Dependency installation failed.
 
-The usual culprit is llama-cpp-python, which compiles from source when no
-prebuilt wheel matches this platform. It needs a C compiler:
+If the error above mentions llama-cpp-python, cmake or a missing compiler,
+then pip found no prebuilt wheel and fell back to building from source. That
+needs a C toolchain:
 
   macOS   xcode-select --install
   Linux   sudo apt install build-essential cmake

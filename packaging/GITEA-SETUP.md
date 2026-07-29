@@ -65,9 +65,19 @@ that only serves this purpose, worth knowing about regardless.
 Releases are published through Gitea's own API by
 `packaging/publish_gitea.py`, so the job needs a token:
 
-1. **Settings → Applications → Generate New Token**, scope `write:repository`.
+1. **Settings → Applications → Generate New Token.** Give it a name, leave
+   everything at *No Access* except **repository**, set to *Read and Write*.
+   Copy the value shown — Gitea displays it exactly once.
 2. In the repository: **Settings → Actions → Secrets → Add Secret**, named
-   `GITEA_TOKEN`.
+   `RELEASE_TOKEN`, value the token from step 1.
+
+   Not `GITEA_TOKEN`. Gitea rejects any secret name starting with `GITEA_` or
+   `GITHUB_` — both prefixes are reserved for its own built-in variables, and
+   the validation pattern is exactly `^(?!GITEA_|GITHUB_)[a-zA-Z_][a-zA-Z0-9_]*$`.
+   `release.yml` reads `secrets.RELEASE_TOKEN` and maps it to a
+   `GITEA_TOKEN` environment variable inside the job — that env var name is
+   unrelated to the secret name and can be anything, since it's just what
+   `publish_gitea.py` reads from `os.environ`.
 
 `GITEA_URL` and `GITEA_REPOSITORY` come from `github.server_url` and
 `github.repository`, which Gitea populates for compatibility. Nothing else to
