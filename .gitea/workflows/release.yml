@@ -1,0 +1,59 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  release:
+    # One Linux runner produces all three archives. build.py normalises
+    # everything that would otherwise vary by build host — file modes, tar
+    # ownership, and launcher line endings — so a Windows zip built here is
+    # equivalent to one built on Windows. That removes the three-runner matrix,
+    # the artifact hand-off between jobs, and the race of three jobs trying to
+    # create the same release.
+    #
+    # Multi-OS runners would still earn their keep for *testing*, which is a
+    # different question from building.
+    runs-on: ubuntu-latest
+    steps:
+      # build.py copies only what "git ls-files" reports, so it needs real
+      # history rather than a tarball export.
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # No pip install: build.py and publish_gitea.py are both stdlib-only, so
+      # the release path cannot be broken by a dependency it does not ship.
+      - name: Build all three archives
+        run: python packaging/build.py --platform all
+
+      # Tag pushes publish; a manual run stops after the build above. Guarding
+      # the step rather than the job is what keeps workflow_dispatch usable as
+      # a dry run — the archives still get built and the logs still show their
+      # sizes, without a release being created.
+      - name: Publish to Gitea
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITEA_URL: ${{ github.server_url }}
+          GITEA_REPOSITORY: ${{ github.repository }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        # Leaves a draft. Review the archives, then publish from the web UI, or
+        # add --publish here once you trust the pipeline.
+        run: >-
+          python packaging/publish_gitea.py
+          --tag "${{ github.ref_name }}"
+          dist/LM-Gambit-*.zip dist/LM-Gambit-*.tar.gz
+
+      - name: Dry run note
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          echo "No tag — archives built but not published."
+          ls -lh dist/

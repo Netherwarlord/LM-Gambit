@@ -467,7 +467,8 @@ from one origin.
 ## Building a release
 
 ```bash
-python packaging/build.py                     # archive for the current platform
+python packaging/build.py --platform all      # the whole release set
+python packaging/build.py                     # just the current platform
 python packaging/build.py --platform linux    # or windows / macos
 python packaging/build.py --skip-web          # reuse an existing web/dist
 ```
@@ -483,15 +484,26 @@ Only files `git ls-files` reports get copied, plus `web/dist`. Local models,
 results, settings and virtual environments cannot leak into an archive even
 if they are sitting in the working tree.
 
-**Via GitHub Actions** — `.github/workflows/release.yml` builds all three on
-`windows-latest`, `ubuntu-latest` and `macos-latest`. Pushing a `v*` tag builds
-the archives and opens a **draft** release with them attached; `workflow_dispatch`
-builds and uploads artifacts without creating a release, which is the way to
-test the pipeline.
+### In CI
+
+Workflows exist for both forges. Pushing a `v*` tag produces a **draft** release
+with the three archives attached; `workflow_dispatch` builds them without
+creating a release, which is how to test the pipeline before a tag exists.
 
 ```bash
 git tag v2.0.0 && git push origin v2.0.0
 ```
+
+| | Builds on | Publishes with |
+|---|---|---|
+| `.github/workflows/release.yml` | `windows-latest`, `ubuntu-latest`, `macos-latest` | `softprops/action-gh-release` |
+| `.gitea/workflows/release.yml` | one `ubuntu-latest` runner | `packaging/publish_gitea.py` |
+
+The Gitea one needs only a single runner because the cross-build makes the
+archives independent of build host — see
+[packaging/GITEA-SETUP.md](packaging/GITEA-SETUP.md) for runner registration and
+the `GITEA_TOKEN` secret. `publish_gitea.py` is stdlib-only and idempotent:
+re-running on the same tag replaces assets rather than duplicating them.
 
 ---
 

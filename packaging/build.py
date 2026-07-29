@@ -192,23 +192,35 @@ def _normalize(info: tarfile.TarInfo) -> tarfile.TarInfo:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--platform", choices=sorted(PLATFORMS), default=current_platform())
+    parser.add_argument(
+        "--platform",
+        choices=[*sorted(PLATFORMS), "all"],
+        default=current_platform(),
+        help="Target platform, or 'all' for a complete release set",
+    )
     parser.add_argument("--skip-web", action="store_true", help="Reuse an existing web/dist")
     args = parser.parse_args()
 
-    version = read_version()
-    print(f"LM-Gambit {version} -> {args.platform}")
+    targets = sorted(PLATFORMS) if args.platform == "all" else [args.platform]
 
+    version = read_version()
+    print(f"LM-Gambit {version} -> {', '.join(targets)}")
+
+    # Once, not once per target: the bundle is identical on every platform.
     if not args.skip_web:
         build_web()
 
-    staging = DIST / f"_staging-{args.platform}"
-    stage(args.platform, staging)
-    out = archive(args.platform, staging, version)
-    shutil.rmtree(staging, ignore_errors=True)
+    built = []
+    for target in targets:
+        staging = DIST / f"_staging-{target}"
+        stage(target, staging)
+        built.append(archive(target, staging, version))
+        shutil.rmtree(staging, ignore_errors=True)
 
-    size_mb = out.stat().st_size / (1024 * 1024)
-    print(f"\n  {out.relative_to(ROOT)}  ({size_mb:.1f} MB)")
+    print()
+    for out in built:
+        size_mb = out.stat().st_size / (1024 * 1024)
+        print(f"  {out.relative_to(ROOT)}  ({size_mb:.1f} MB)")
     return 0
 
 
