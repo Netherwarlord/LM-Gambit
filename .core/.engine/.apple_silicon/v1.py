@@ -74,7 +74,6 @@ class EngineRuntime(BaseRuntime):
                 n_ctx=self.context_window,
                 n_gpu_layers=-1,
                 n_threads=self.threads,
-                use_gpu=True,
                 verbose=False,
             )
             self._mode = "llama_cpp"

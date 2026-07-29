@@ -35,7 +35,6 @@ class EngineRuntime(BaseRuntime):
             n_ctx=self.context_window,
             n_threads=self.threads,
             n_gpu_layers=self.gpu_layers,
-            use_gpu=True,
             verbose=False,
         )
         self._model_path = model_path

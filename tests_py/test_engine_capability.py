@@ -17,8 +17,10 @@ from _harness import Results, bootstrap
 bootstrap()
 from engine_loader import (  # noqa: E402
     GPU_ARCHITECTURES,
+    LLAMA_ONLY_GPU_ARCHITECTURES,
     EngineDescriptor,
     detect_architecture,
+    effective_descriptor,
     engine_warning,
     gpu_offload_supported,
 )
@@ -32,16 +34,37 @@ for arch in ("cuda", "rocm", "apple_silicon"):
     warning = engine_warning(EngineDescriptor(arch), offload=False)
     r.check(
         f"{arch} + CPU-only build warns",
-        warning is not None and arch in warning,
+        warning is not None,
     )
     r.check(
         f"{arch} warning names the fix",
         warning is not None and "GPU-ACCELERATION.md" in warning,
     )
+
+for arch in ("cuda", "rocm"):
+    warning = engine_warning(EngineDescriptor(arch), offload=False)
+    r.check(
+        f"{arch} warning names the architecture",
+        warning is not None and arch in warning,
+    )
     r.check(
         f"{arch} warning says the GPU is idle",
         warning is not None and "idle" in warning.lower(),
     )
+
+
+# ------------------------------------------------- apple silicon is not "idle"
+
+# MLX models reach the GPU through mlx-lm, which does not care how
+# llama-cpp-python was compiled. Telling a Mac user their GPU is idle would be
+# false for anyone running MLX, so the wording has to stay scoped to GGUF.
+mac_warning = engine_warning(EngineDescriptor("apple_silicon"), offload=False)
+r.check("apple_silicon warning scopes itself to GGUF", "GGUF" in (mac_warning or ""))
+r.check("apple_silicon warning says MLX is unaffected", "MLX" in (mac_warning or ""))
+r.check(
+    "apple_silicon warning avoids the false 'idle' claim",
+    "idle" not in (mac_warning or "").lower(),
+)
 
 r.check(
     "GPU-capable build produces no warning",
@@ -86,6 +109,66 @@ r.check(
     "probe never returns a truthy non-bool",
     offload is None or offload is True or offload is False,
 )
+
+
+# --------------------------------------------------- the runtime substitution
+
+# The whole point: on a CPU-only build, a GPU architecture must resolve to the
+# CPU runtime, so the reported runtime name matches what actually executes.
+for arch in ("cuda", "rocm"):
+    r.equal(
+        f"{arch} + CPU-only build resolves to the cpu runtime",
+        effective_descriptor(EngineDescriptor(arch), offload=False).architecture,
+        "cpu",
+    )
+    r.equal(
+        f"{arch} + GPU build keeps its own runtime",
+        effective_descriptor(EngineDescriptor(arch), offload=True).architecture,
+        arch,
+    )
+    # None means "cannot tell". Substituting on a guess would silently strip
+    # GPU support from anyone whose llama_cpp predates the probe.
+    r.equal(
+        f"{arch} with unknowable offload is left alone",
+        effective_descriptor(EngineDescriptor(arch), offload=None).architecture,
+        arch,
+    )
+
+# apple_silicon must survive untouched even on a CPU-only build: its runtime
+# also serves MLX models, which do not go through llama.cpp at all, and it
+# overrides discover_gguf_models() to find them. Swapping in the cpu runtime
+# would break MLX discovery and loading outright.
+for offload in (False, True, None):
+    r.equal(
+        f"apple_silicon is never substituted (offload={offload})",
+        effective_descriptor(EngineDescriptor("apple_silicon"), offload=offload).architecture,
+        "apple_silicon",
+    )
+
+r.check(
+    "apple_silicon is excluded from the substitutable set",
+    "apple_silicon" not in LLAMA_ONLY_GPU_ARCHITECTURES,
+)
+r.check(
+    "substitutable set is a subset of GPU architectures",
+    LLAMA_ONLY_GPU_ARCHITECTURES <= GPU_ARCHITECTURES,
+)
+
+# The substitution preserves the engine version, or it would silently jump
+# runtime versions along with architecture.
+r.equal(
+    "substitution preserves the engine version",
+    effective_descriptor(EngineDescriptor("cuda", "v1"), offload=False).version,
+    "v1",
+)
+
+# cpu in, cpu out — no architecture should be rewritten to something else.
+for offload in (False, True, None):
+    r.equal(
+        f"cpu architecture is never rewritten (offload={offload})",
+        effective_descriptor(EngineDescriptor("cpu"), offload=offload).architecture,
+        "cpu",
+    )
 
 
 # ------------------------------------------------------------- wiring sanity

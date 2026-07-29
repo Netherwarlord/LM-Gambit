@@ -68,6 +68,17 @@ class EngineDescriptor:
 #: Architectures whose runtimes ask llama.cpp to offload layers to a GPU.
 GPU_ARCHITECTURES = frozenset({"cuda", "rocm", "apple_silicon"})
 
+#: The subset that runs *only* through llama.cpp, and can therefore be safely
+#: swapped for the CPU runtime when the installed build cannot offload.
+#:
+#: apple_silicon is excluded on purpose. Its runtime is dual-mode: GGUF files go
+#: through llama.cpp, but directories with a config.json go through mlx-lm,
+#: which drives the GPU with no involvement from llama-cpp-python at all. It
+#: also overrides discover_gguf_models() to find those directories. Falling back
+#: to the CPU runtime there would break MLX discovery and loading outright, over
+#: a limitation that does not apply to MLX in the first place.
+LLAMA_ONLY_GPU_ARCHITECTURES = frozenset({"cuda", "rocm"})
+
 
 def detect_architecture() -> EngineDescriptor:
     """Which engine runtime this *hardware* calls for.
@@ -133,18 +144,59 @@ def engine_warning(
         return None
 
     offload = gpu_offload_supported() if offload is None else offload
-    if offload is False:
+    if offload is not False:
+        return None
+
+    if descriptor.architecture == "apple_silicon":
+        # Scoped to GGUF deliberately. MLX models still get the GPU here — they
+        # go through mlx-lm, which has nothing to do with how llama-cpp-python
+        # was compiled. Claiming "the GPU will sit idle" would be false for
+        # anyone running MLX.
         return (
-            f"{descriptor.architecture} hardware was detected, but the installed "
-            "llama-cpp-python is a CPU-only build, so the GPU will sit idle and "
-            "generation will run on the CPU. See GPU-ACCELERATION.md to install "
-            "a matching wheel."
+            "The installed llama-cpp-python is a CPU-only build, so GGUF models "
+            "will run on the CPU. MLX models are unaffected and still use the "
+            "GPU. See GPU-ACCELERATION.md to rebuild with Metal support."
         )
-    return None
+
+    return (
+        f"{descriptor.architecture} hardware was detected, but the installed "
+        "llama-cpp-python is a CPU-only build, so the GPU will sit idle and "
+        "generation will run on the CPU. See GPU-ACCELERATION.md to install "
+        "a matching wheel."
+    )
+
+
+def effective_descriptor(
+    descriptor: Optional[EngineDescriptor] = None,
+    *,
+    offload: Optional[bool] = None,
+) -> EngineDescriptor:
+    """The runtime that will actually execute, which the hardware alone cannot say.
+
+    A CPU-only llama-cpp-python on an NVIDIA box cannot offload anything, but
+    the CUDA runtime will still load, call itself "llama_cpp_cuda", and request
+    n_gpu_layers=-1. llama.cpp quietly ignores the request and runs on the CPU,
+    so every one of those signals is fiction. Selecting the CPU runtime instead
+    makes the reported runtime match what actually happens.
+
+    This hides nothing: detect_architecture() still reports the real hardware,
+    and engine_warning() still explains why the two differ.
+    """
+    descriptor = descriptor or detect_architecture()
+    if descriptor.architecture not in LLAMA_ONLY_GPU_ARCHITECTURES:
+        return descriptor
+
+    offload = gpu_offload_supported() if offload is None else offload
+    if offload is False:
+        return EngineDescriptor("cpu", descriptor.version)
+    return descriptor
 
 
 def load_engine_class(descriptor: Optional[EngineDescriptor] = None) -> Type["BaseRuntime"]:
-    descriptor = descriptor or detect_architecture()
+    # Resolved through effective_descriptor so a GPU runtime is never loaded on
+    # a build that cannot drive one. Callers still pass the hardware-detected
+    # descriptor; the substitution happens here so every entry point gets it.
+    descriptor = effective_descriptor(descriptor)
     module_path = descriptor.module_path
     if not module_path.exists():
         raise EngineLoadError(f"Engine runtime not found for architecture '{descriptor.architecture}' at {module_path}")
