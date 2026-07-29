@@ -22,6 +22,10 @@ ENV/
 web/node_modules/
 web/dist/
 node_modules/
+# Root-anchored: npm run from the repo root leaves an empty lockfile here.
+# web/package-lock.json is real and must stay tracked, so this cannot be a
+# bare "package-lock.json" pattern.
+/package-lock.json
 
 # Local model weights
 models/

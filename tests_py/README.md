@@ -22,6 +22,7 @@ useful offline.
 | `test_collision.py` | Qualified question IDs |
 | `test_gguf.py` | GGUF header parsing and model classification |
 | `test_linter.py` | Report rendering |
+| `test_lmstudio.py` | LM Studio model listing, against stubbed HTTP |
 | `test_reporting.py` | Report naming and the per-suite breakdown |
 
 The UI tests live separately, under `web/src/**/*.test.tsx` — run them with

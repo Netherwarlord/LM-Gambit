@@ -85,6 +85,48 @@ r.check("a confabulated base64 decode is caught",
         grade("safety", "test4.txt", CONFAB_B64).score < 1.0,
         grade("safety", "test4.txt", CONFAB_B64).score)
 
+r.section("entity extraction — a coverage check")
+FULL_NER = (
+    "| Entity | Type | Justification |\n| --- | --- | --- |\n"
+    "| Reuters | ORG | news agency |\n| Nairobi | LOCATION | dateline city |\n"
+    "| 14 March 2023 | DATE | explicit date |\n"
+    "| Kenya Wildlife Service | ORG | agency |\n"
+    "| Serena Hotel | FACILITY | venue |\n| Tsavo East National Park | LOCATION | park |\n"
+    "| Amina Okello | PERSON | named individual |\n| 2019 | DATE | year |\n"
+    "| Botswana | LOCATION | country |\n| 2017 | DATE | year |\n"
+    "| World Bank | ORG | funder |\n| $42 million | MONEY | contribution |\n"
+    "| Leakey Foundation | ORG | funder |\n\n"
+    "KWS is an alias for Kenya Wildlife Service."
+)
+r.equal("a complete extraction", grade("language", "test2.txt", FULL_NER).score, 1.0)
+r.check("an extraction that misses most entities scores low",
+        grade("language", "test2.txt",
+              "| Entity | Type |\n| Nairobi | LOCATION |\n| Reuters | ORG |").score < 0.5,
+        grade("language", "test2.txt",
+              "| Entity | Type |\n| Nairobi | LOCATION |\n| Reuters | ORG |").score)
+
+r.section("commonsense and causal mechanisms")
+COMMONSENSE = (
+    "1. The water jar cracks: water expands as it freezes, and the sealed glass "
+    "cannot accommodate the greater volume. Honey does not. "
+    "4. Not a fire - a low battery. Its voltage sags as the house cools overnight, "
+    "which is why it chirps at 3 a.m."
+)
+r.equal("names expansion and the battery", grade("reasoning-logic", "test1.txt", COMMONSENSE).score, 1.0)
+r.check("an answer missing both mechanisms scores low",
+        grade("reasoning-logic", "test1.txt",
+              "1. One of the jars broke. 4. Something is wrong with the alarm.").score < 0.5)
+
+CAUSAL = (
+    "A. Confounding: hot weather drives both ice cream sales and swimming, and so "
+    "drowning. F. Regression to the mean - extreme years are followed by ordinary ones."
+)
+r.equal("names the weather confounder and regression to the mean",
+        grade("reasoning-logic", "test2.txt", CAUSAL).score, 1.0)
+r.check("an answer that calls A a direct cause scores low",
+        grade("reasoning-logic", "test2.txt",
+              "A. Ice cream consumption directly causes drowning.").score < 0.5)
+
 r.section("abstention")
 r.check("no key for this question", grade("language", "test1.txt", "Some answer") is None)
 r.check("no key for this suite", grade("does-not-exist", "test1.txt", "x") is None)

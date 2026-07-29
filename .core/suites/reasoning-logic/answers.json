@@ -1,6 +1,22 @@
 {
   "_comment": "The grid and the CPM network were solved by brute force, not by re-reading the derivation. Both confirmed unique.",
 
+  "test1.txt": {
+    "note": "Commonsense mechanisms. Only the four items with an unambiguous physical answer are checked: water expands on freezing so that jar cracks (honey does not); the 3 a.m. chirp is a low battery, whose voltage sags as the house cools overnight; resting a roast lets juices redistribute; metal feels hotter than wood at equal temperature because it conducts heat away from the skin faster.",
+    "must_contain_any": ["expand", "expansion", "less dense", "more space", "greater volume"],
+    "regex": "(?i)(batter(y|ies))",
+    "_reasoning": "Items 2 and 3 - the coffee mug and the indirect refusal - are deliberately unchecked. Both are correct in too many phrasings to pattern-match without risking a false failure. The remaining two mechanisms are covered by test1_extra below, kept separate so one missing term does not mask another."
+  },
+
+  "_test1_extra_note": "Held as documentation rather than a matcher: 'juice'/'redistribute' for the roast and 'conduct' for the spoons were considered, but folding four independent facts into one score made a partial answer indistinguishable from a wrong one. Split them only if per-item scoring is ever added.",
+
+  "test2.txt": {
+    "note": "Causal structures. The discriminating content is the lurking variable behind finding A - ice cream and drowning are both driven by hot weather - because that word appears nowhere in the prompt. The structure names do appear in the prompt as a list of options, so containing them proves little; they are checked anyway because a correct answer certainly contains them and the check cannot fail correct work.",
+    "must_contain_any": ["temperature", "summer", "hot weather", "warm weather", "heat"],
+    "regex": "(?i)regression to the mean",
+    "_reasoning": "Finding F is regression to the mean and finding E is a selection effect, but both terms are supplied by the prompt, so a model could echo them while assigning them to the wrong findings. The weather confounder is the one answer the prompt does not hand over."
+  },
+
   "test3.txt": {
     "note": "Unique solution: Alvarez/South/comets, Brandt/North/dialects, Chen/East/basalt, Dube/West/algae. Clue 5 is redundant - removing it still leaves exactly one solution; removing any other clue does not.",
     "must_contain": ["Alvarez", "Brandt", "Chen", "Dube"],

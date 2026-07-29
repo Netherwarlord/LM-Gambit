@@ -1,0 +1,12 @@
+# Dependencies needed to run the test suite, and nothing more.
+#
+# Deliberately excludes llama-cpp-python: it needs a C compiler, dominates
+# install time, and nothing under tests_py/ imports it. The tests exercise
+# suite loading, grading, report rendering and the HTTP surface — none of which
+# touch local inference.
+#
+# Keep the bounds in step with requirements.txt.
+
+fastapi>=0.115,<0.200
+uvicorn[standard]>=0.30,<1.0
+requests>=2.31.0,<3.0

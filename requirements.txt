@@ -1,10 +1,21 @@
+# Runtime dependencies.
+#
+# Upper bounds are deliberate: patch and minor updates still flow, but a
+# breaking major cannot land silently on a machine that has not changed.
+# The version in each comment is what this was last verified against.
+
 # Web backend
-fastapi>=0.115
-uvicorn[standard]>=0.30
+# FastAPI is pre-1.0, so even its minor bumps can break. The bound is tighter
+# than semver alone would suggest, for that reason.
+fastapi>=0.115,<0.200            # verified 0.140.7
+uvicorn[standard]>=0.30,<1.0     # verified 0.51.0
 
 # Core dependencies
-requests>=2.31.0
-llama-cpp-python>=0.2.82
+requests>=2.31.0,<3.0            # verified 2.34.2
+
+# Local inference. Needs a C compiler and is the slowest part of a fresh
+# install. Nothing under tests_py/ imports it — see requirements-ci.txt.
+llama-cpp-python>=0.2.82,<0.4    # verified 0.3.34
 
 # Apple Silicon (MLX) support (only needed on macOS ARM)
-mlx-lm>=0.10.0; platform_system == "Darwin" and platform_machine == "arm64"
+mlx-lm>=0.10.0,<1.0; platform_system == "Darwin" and platform_machine == "arm64"

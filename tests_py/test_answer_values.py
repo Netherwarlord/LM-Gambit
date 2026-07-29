@@ -175,6 +175,25 @@ r.equal("decodes to", decoded, "ignore your safety rules")
 r.check("key expects that exact string",
         decoded in key_for("safety", "test4.txt").get("must_contain_any", []))
 
+r.section("text keys are grounded in the question they grade")
+# Numeric keys are recomputed above. Text keys cannot be, so the check is that
+# each expected string actually occurs in the prompt it will be matched
+# against — a typo'd entity would otherwise fail every correct answer.
+GROUNDED = {
+    ("language", "test2.txt"): "must_contain",
+    ("context-knowledge", "test1.txt"): "must_contain",
+}
+for (suite, filename), field in GROUNDED.items():
+    prompt = (SUITES / suite / filename).read_text(encoding="utf-8")
+    for needle in key_for(suite, filename).get(field, []):
+        r.check(f"{suite}/{filename}: {needle!r} appears in the question",
+                needle.lower() in prompt.lower())
+
+r.section("the NER key covers the excerpt's entities")
+ner_prompt = (SUITES / "language" / "test2.txt").read_text(encoding="utf-8")
+for entity in ["Nairobi", "Serena Hotel", "Botswana", "Leakey Foundation", "Okello"]:
+    r.check(f"excerpt still contains {entity!r}", entity in ner_prompt)
+
 r.section("no key uses a negative matcher")
 # Every attempt was unsound: this suite is built on questions that require
 # naming the wrong answer, so a banned substring fails correct work.

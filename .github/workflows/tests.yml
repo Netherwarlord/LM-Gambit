@@ -1,0 +1,66 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A later push supersedes an in-flight run; no point finishing a stale one.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is what this is developed against. 3.10 is the floor the README
+        # advertises, so it is checked rather than assumed.
+        python: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
+
+      # requirements-ci.txt deliberately omits llama-cpp-python: it needs a C
+      # compiler, dominates install time, and nothing under tests_py/ imports
+      # it. The tests cover suite loading, grading, reporting and the HTTP
+      # surface — none of which touch local inference.
+      - name: Install
+        run: python -m pip install -r requirements-ci.txt
+
+      # test_api.py skips itself when nothing is listening on :8765, so the
+      # other eight files run and the suite still reports success.
+      - name: Run tests
+        run: python tests_py/run_all.py
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Runs tsc as well as the bundler, so a type error fails here.
+      - name: Type-check and build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test

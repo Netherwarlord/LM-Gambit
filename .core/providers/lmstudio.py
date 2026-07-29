@@ -11,6 +11,12 @@ from .base import ModelInfo, Provider, ProviderError
 
 DEFAULT_BASE_URL = "http://localhost:1234"
 
+#: LM Studio's native endpoint labels each model. ``llm`` and ``vlm`` can both
+#: answer a prompt; ``embeddings`` cannot, and offering one produces an empty
+#: report with no error. The OpenAI-compatible ``/v1/models`` carries no such
+#: field, which is why the native endpoint is tried first.
+NON_GENERATIVE_TYPES = frozenset({"embeddings"})
+
 
 class LMStudioProvider(Provider):
     name = "LM Studio"
@@ -18,9 +24,64 @@ class LMStudioProvider(Provider):
     def __init__(self, base_url: Optional[str] = None) -> None:
         self.base_url = base_url or get_env_setting("LM_STUDIO_BASE_URL", DEFAULT_BASE_URL)
         self._models_url = f"{self.base_url}/v1/models"
+        self._native_models_url = f"{self.base_url}/api/v0/models"
         self._chat_url = f"{self.base_url}/v1/chat/completions"
 
+    # ------------------------------------------------------------- listing
+
     def list_models(self) -> List[ModelInfo]:
+        """Models that can actually answer a prompt.
+
+        Prefers LM Studio's native endpoint, which states each model's type.
+        Falls back to the OpenAI-compatible list unfiltered when that is
+        unavailable — an older LM Studio, say. Only positive evidence hides a
+        model: a name-based guess would conceal any legitimate model whose id
+        happened to contain "embed", and a model missing from the picker is
+        harder to diagnose than one that fails when run.
+        """
+        native = self._native_models()
+        if native is not None:
+            return native
+        return self._openai_models()
+
+    def _native_models(self) -> Optional[List[ModelInfo]]:
+        """Parse ``/api/v0/models``, or None if it is not usable."""
+        try:
+            response = requests.get(self._native_models_url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+        except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError):
+            return None
+
+        entries = data.get("data") if isinstance(data, dict) else None
+        if not isinstance(entries, list) or not entries:
+            return None
+
+        result: List[ModelInfo] = []
+        skipped = 0
+        for item in entries:
+            if not isinstance(item, dict):
+                return None  # not the shape we expected; fall back
+            model_id = str(item.get("id") or "")
+            if not model_id:
+                continue
+            if str(item.get("type", "")).lower() in NON_GENERATIVE_TYPES:
+                skipped += 1
+                continue
+            result.append(ModelInfo(id=model_id, display_name=model_id))
+
+        if not result:
+            if skipped:
+                raise ProviderError(
+                    f"LM Studio has {skipped} model(s) loaded, but all of them are "
+                    "embedding models, which cannot generate text. Load a chat or "
+                    "instruct model."
+                )
+            return None
+        return result
+
+    def _openai_models(self) -> List[ModelInfo]:
+        """The OpenAI-compatible list. No type information, so no filtering."""
         try:
             response = requests.get(self._models_url, timeout=10)
             response.raise_for_status()

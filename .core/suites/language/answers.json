@@ -1,7 +1,24 @@
 {
-  "_comment": "Deliberately empty. Nothing in the language suite is reliably auto-checkable, and an unreliable key is worse than none - it fails correct answers with total confidence, which is the exact problem this grader exists to remove.",
+  "_comment": "Only entity extraction is keyed. The rest of this suite is judgement - sentiment, similarity, summarisation, translation - and an unreliable key is worse than none, because it fails correct work with total confidence.",
+
+  "test2.txt": {
+    "note": "Named entity recognition. Every entity below appears verbatim in the supplied excerpt, so any correct extraction contains them. This is a coverage check: it can pass an answer that lists the entities but mislabels their types, and that is the intended trade - it can never fail an answer that got them right.",
+    "must_contain": [
+      "Nairobi",
+      "Kenya Wildlife Service",
+      "Serena Hotel",
+      "Tsavo East",
+      "Okello",
+      "Botswana",
+      "World Bank",
+      "Leakey Foundation"
+    ],
+    "must_contain_any": ["KWS"],
+    "numbers": [2023, 2019, 2017, 42],
+    "_reasoning": "must_contain_any on KWS covers the alias question - the answer must notice KWS and Kenya Wildlife Service are the same entity. The numbers are the three years and the $42 million figure. Type classification is deliberately unchecked: a table can be right about the entity and wrong about the label in ways no substring test can separate."
+  },
 
   "_test4_omitted": "The Winograd item looked checkable: the first `it` is the TROPHY (a trophy too large fails to fit; a suitcase too large would succeed), flipping to the SUITCASE on 'too small'. But correctness turns on which noun binds to which condition, in free prose, and both nouns necessarily appear in any answer. Every pattern tried also matched an inverted answer, because 'it would refer to the trophy instead' sits inside the counterfactual sentence. Left to human review.",
 
-  "_others_omitted": "Sentiment, entity extraction, semantic similarity, summarisation and translation are judgement calls. Pattern-matching them would manufacture false confidence."
+  "_others_omitted": "Sentiment, semantic similarity, summarisation and translation are judgement calls. Pattern-matching them would manufacture false confidence."
 }

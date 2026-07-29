@@ -4,9 +4,23 @@ LM-Gambit benchmarks local or remote Large Language Models against a suite of pr
 author yourself. It runs each question one at a time, records throughput and latency for
 every answer, and writes a markdown report you can grade.
 
-Version 2.0.0 replaces the Tkinter GUI with a React web interface served by a FastAPI
-backend. The diagnostic engine under `.core/` is unchanged — the CLI, providers, hardware
-runtimes and report format all behave exactly as before.
+## What 2.0.0 brings over 1.0.0
+
+The Tkinter GUI is replaced by a React web interface served by a FastAPI backend.
+Beyond the interface:
+
+- **Named suites.** Questions live in five read-only built-in suites rather than one
+  flat directory, and a run can draw from several at once, or from a subset of any.
+  Custom suites are yours to edit; built-ins stay a stable baseline for comparison.
+- **Three graders.** Two measure form — whether an answer did what it was told — and
+  `answer_key` measures whether it was actually right, for the questions with an
+  unambiguous answer.
+- **A plugin framework.** Plugins add nav entries, pages and panels by describing them
+  as data, so installing one never requires rebuilding the frontend.
+- **Run history.** Reports are named `<model>__<timestamp>__<scope>__<n>q.md`, so runs
+  no longer overwrite each other and each file records what it covered.
+
+The `auto-test.py` CLI still drives the same engine the web interface does.
 
 ---
 
@@ -118,12 +132,18 @@ A plugin can grade answers, add sections to reports, expose HTTP endpoints, and
 contribute interface — nav entries, whole pages, and panels on the built-in
 views — without shipping a line of JavaScript or rebuilding the frontend.
 
-Two ship enabled:
+Three ship enabled:
 
 | Plugin | What it does |
 | --- | --- |
 | `response_checks` | Grades any answer against the constraints its own prompt states |
 | `code_lint` | Static analysis of code blocks in answers. Never executes them |
+| `answer_key` | Checks answers against known-correct content, where one exists |
+
+The first two measure **form** — whether an answer did what it was told.
+`answer_key` is the only one that asks whether it was **right**, and it only
+covers questions with an unambiguous answer (16 of 26). The rest abstain, so a
+high score reads as "correct where checkable, well-formed elsewhere".
 
 Drop a `.py` file into `plugins/` and it loads at startup. Start from the
 skeleton, which documents every hook:
@@ -203,6 +223,20 @@ URL it fetches live. Paths are namespaced under `/x/<slug>/`, so plugins cannot
 collide with each other or shadow a built-in route. Full vocabulary at `/docs`.
 
 ### The bundled graders
+
+`plugins/answer_key.py` compares answers against `answers.json` files that sit
+beside the questions, using `must_contain`, `must_contain_any`, `numbers` and
+`regex` matchers scored as the fraction satisfied. No key means abstain.
+
+Two rules govern what gets a key, both learned the hard way:
+
+- **Verify the value before writing it.** `tests_py/test_answer_values.py`
+  recomputes every numeric key from scratch. It exists because one key was
+  recorded backwards, and shipping it would have failed every correct answer.
+- **Prefer checks that can only pass wrongly, never fail wrongly.** No key uses
+  a negative matcher: this suite is full of questions that require naming the
+  wrong answer — *"show why it is not 50%"*, *"quote the exact text"* — so a
+  banned substring penalises correct work.
 
 `plugins/code_lint.py` statically analyses code blocks in answers — syntax,
 compilation, the signature the prompt demanded, stub bodies, undefined names,
@@ -303,12 +337,17 @@ Reports are written to `results/automated_report_<model>.md`.
 ## Tests
 
 ```bash
-python tests_py/run_all.py     # 195 assertions, no dependencies
-cd web && npm test             # 29 UI assertions
+python tests_py/run_all.py     # 227 assertions
+cd web && npm test             # 29 assertions
 ```
 
-`tests_py/test_api.py` needs a running server and skips cleanly without one.
-Details in [`tests_py/README.md`](tests_py/README.md).
+Both run in CI on every push — see [`.github/workflows/tests.yml`](.github/workflows/tests.yml).
+
+The Python tests need only `requirements-ci.txt`, which omits
+`llama-cpp-python`: it wants a C compiler, dominates install time, and nothing
+in the test suite touches local inference. `tests_py/test_api.py` additionally
+needs a running server and skips cleanly without one, so the rest stay useful
+offline. Details in [`tests_py/README.md`](tests_py/README.md).
 
 ---
 
