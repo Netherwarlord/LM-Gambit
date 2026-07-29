@@ -1,0 +1,24 @@
+{
+  "_comment": "The grid and the CPM network were solved by brute force, not by re-reading the derivation. Both confirmed unique.",
+
+  "test3.txt": {
+    "note": "Unique solution: Alvarez/South/comets, Brandt/North/dialects, Chen/East/basalt, Dube/West/algae. Clue 5 is redundant - removing it still leaves exactly one solution; removing any other clue does not.",
+    "must_contain": ["Alvarez", "Brandt", "Chen", "Dube"],
+    "must_contain_any": ["South", "north"],
+    "regex": "(?i)clue\\s*5|fifth clue",
+    "_reasoning": "Part (d) asks which clue is redundant. Verified by re-solving with each clue dropped in turn."
+  },
+
+  "test5.txt": {
+    "note": "Critical path A-D-E-F-H, project finish 32 days. Slack: B=12, G=11 (and C=5). D slipping 3 days pushes the finish to 35; G slipping 3 days changes nothing.",
+    "numbers": [32, 12, 11],
+    "must_contain_any": ["A → D → E → F → H", "A->D->E->F->H", "A-D-E-F-H", "A, D, E, F, H"],
+    "_reasoning": "Path notation varies, so several renderings are accepted."
+  },
+
+  "test6.txt": {
+    "note": "Cognitive-reflection answers: ball is 5 cents (not 10), 100 machines take 5 minutes (not 100), lake is half covered on day 47 (not 24).",
+    "numbers": [5, 47],
+    "_reasoning": "The intuitive-but-wrong answers are 10c, 100 minutes and 24 days. Only the correct values are checked: Stage 2 explicitly asks the model to state the wrong answer it was meant to elicit, so banning '24 days' would fail a correct answer. The 5-minute answer collides numerically with the 5-cent one and is not checked separately."
+  }
+}

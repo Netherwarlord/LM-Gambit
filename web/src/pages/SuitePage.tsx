@@ -383,6 +383,9 @@ export function SuitePage() {
                           className="btn btn-ghost btn-sm text-rose-400 hover:bg-rose-500/10"
                           onClick={() => setDeleteSuiteOpen(true)}
                           disabled={busy || isLive}
+                          // Distinguished from the per-question Delete buttons,
+                          // which are icon-only and announce as just "Delete".
+                          aria-label="Delete suite"
                         >
                           <Trash2 size={13} />
                           Delete

@@ -395,6 +395,22 @@ def _model_label_from(content: str, fallback: str) -> str:
     return match.group(1).strip() if match else fallback
 
 
+def _parse_report_name(stem: str) -> tuple:
+    """Pull ``(suite_scope, question_count)`` out of a report filename.
+
+    Names look like ``<model>__<timestamp>__<scope>__<n>q``. Reports written
+    before that scheme return ``("", None)`` rather than a guess — claiming a
+    scope for a file that never recorded one is how the old flat names became
+    misleading in the first place.
+    """
+    parts = stem.split("__")
+    if len(parts) < 4:
+        return "", None
+    scope = parts[-2]
+    match = re.fullmatch(r"(\d+)q", parts[-1])
+    return scope, int(match.group(1)) if match else None
+
+
 @router.get("/reports", response_model=List[ReportSummary])
 async def get_reports() -> List[ReportSummary]:
     if not RESULTS_DIR.exists():
@@ -407,12 +423,15 @@ async def get_reports() -> List[ReportSummary]:
             head = path.read_text(encoding="utf-8", errors="replace")[:400]
         except OSError:
             continue
+        scope, count = _parse_report_name(path.stem)
         summaries.append(
             ReportSummary(
                 name=path.name,
                 model_label=_model_label_from(head, path.stem),
                 size_bytes=stat.st_size,
                 modified_at=stat.st_mtime,
+                suite_scope=scope,
+                question_count=count,
             )
         )
     summaries.sort(key=lambda item: item.modified_at, reverse=True)

@@ -169,6 +169,11 @@ class ReportSummary(BaseModel):
     model_label: str
     size_bytes: int
     modified_at: float
+    #: Parsed out of the filename so the list can group by model and show what
+    #: each run actually covered. Older reports predate the scheme and leave
+    #: these empty rather than guessing.
+    suite_scope: str = ""
+    question_count: Optional[int] = None
 
 
 class ReportDetail(ReportSummary):

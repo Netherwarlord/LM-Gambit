@@ -24,10 +24,25 @@ import { PluginSlot } from '../components/PluginBlocks'
 import { Markdown } from '../components/Markdown'
 import { ScoreBadge, scoreTone } from '../components/ScoreBadge'
 import { ThroughputChart } from '../components/ThroughputChart'
-import { api, ApiError, type ReportDetail } from '../lib/api'
+import { api, ApiError, type ReportDetail, type ReportSummary } from '../lib/api'
 import { parseReport } from '../lib/report'
 import { cx, formatBytes, formatRelativeTime } from '../lib/format'
 import { useRouter } from '../lib/router'
+
+/**
+ * Runs bucketed by model, newest first within each bucket and models ordered
+ * by their most recent run. The API already sorts by time, so insertion order
+ * carries that through.
+ */
+export function groupByModel(reports: ReportSummary[]): [string, ReportSummary[]][] {
+  const groups = new Map<string, ReportSummary[]>()
+  for (const report of reports) {
+    const bucket = groups.get(report.model_label)
+    if (bucket) bucket.push(report)
+    else groups.set(report.model_label, [report])
+  }
+  return [...groups.entries()]
+}
 
 type View = 'chart' | 'table' | 'full'
 
@@ -137,53 +152,82 @@ export function ReportsPage() {
               {reports.loading ? (
                 <SkeletonRows rows={3} />
               ) : (
-                <ul className="max-h-[70vh] divide-y divide-navy-700/60 overflow-y-auto">
-                  {items.map((report) => {
-                    const active = report.name === routeName
-                    return (
-                      <li key={report.name}>
-                        <div
-                          className={cx(
-                            'group relative flex items-center gap-2 px-4 py-3 transition-colors',
-                            active ? 'bg-navy-750/60' : 'hover:bg-navy-800/40',
-                          )}
-                        >
-                          {active && (
-                            <span className="absolute top-1/2 left-0 h-8 w-[3px] -translate-y-1/2 rounded-r-full bg-ember-500" />
-                          )}
-                          <button
-                            className="min-w-0 flex-1 text-left"
-                            onClick={() =>
-                              navigate(`/reports/${encodeURIComponent(report.name)}`)
-                            }
-                          >
-                            <div
-                              className={cx(
-                                'truncate text-[0.8125rem] font-medium',
-                                active ? 'text-ink-100' : 'text-ink-200',
-                              )}
-                            >
-                              {report.model_label}
-                            </div>
-                            <div className="mt-0.5 flex items-center gap-2 text-[0.6875rem] text-ink-500">
-                              <span>{formatRelativeTime(report.modified_at)}</span>
-                              <span>·</span>
-                              <span className="num">{formatBytes(report.size_bytes)}</span>
-                            </div>
-                          </button>
-                          <button
-                            className="shrink-0 rounded-md p-1.5 text-ink-500 opacity-0 transition-all group-hover:opacity-100 hover:bg-rose-500/15 hover:text-rose-400 focus-visible:opacity-100"
-                            onClick={() => setPendingDelete(report.name)}
-                            aria-label={`Delete ${report.name}`}
-                            title="Delete report"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
+                <div className="max-h-[70vh] overflow-y-auto">
+                  {groupByModel(items).map(([model, runs]) => (
+                    <div key={model}>
+                      {/* Runs are grouped by model so a model's history reads
+                          as one thread rather than scattered through the list. */}
+                      <div className="sticky top-0 z-10 flex items-baseline justify-between gap-2 border-b border-navy-700/60 bg-navy-900/95 px-4 py-2 backdrop-blur">
+                        <span className="truncate text-[0.6875rem] font-semibold tracking-[0.06em] text-ink-300 uppercase">
+                          {model}
+                        </span>
+                        <span className="num shrink-0 text-[0.625rem] text-ink-500">
+                          {runs.length} run{runs.length === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      <ul className="divide-y divide-navy-700/60">
+                        {runs.map((report) => {
+                          const active = report.name === routeName
+                          return (
+                            <li key={report.name}>
+                              <div
+                                className={cx(
+                                  'group relative flex items-center gap-2 px-4 py-2.5 transition-colors',
+                                  active ? 'bg-navy-750/60' : 'hover:bg-navy-800/40',
+                                )}
+                              >
+                                {active && (
+                                  <span className="absolute top-1/2 left-0 h-8 w-[3px] -translate-y-1/2 rounded-r-full bg-ember-500" />
+                                )}
+                                <button
+                                  className="min-w-0 flex-1 text-left"
+                                  onClick={() =>
+                                    navigate(`/reports/${encodeURIComponent(report.name)}`)
+                                  }
+                                >
+                                  <div className="flex items-center gap-1.5">
+                                    {/* Scope and count are what distinguish a
+                                        smoke test from a real benchmark. */}
+                                    {report.suite_scope ? (
+                                      <span className="rounded border border-navy-700 bg-navy-800/70 px-1.5 py-px text-[0.625rem] text-ink-300">
+                                        {report.suite_scope}
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="rounded border border-navy-700 bg-navy-800/40 px-1.5 py-px text-[0.625rem] text-ink-600"
+                                        title="Saved before runs recorded their scope"
+                                      >
+                                        legacy
+                                      </span>
+                                    )}
+                                    {report.question_count != null && (
+                                      <span className="num text-[0.6875rem] text-ink-400">
+                                        {report.question_count}q
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="mt-0.5 flex items-center gap-2 text-[0.6875rem] text-ink-500">
+                                    <span>{formatRelativeTime(report.modified_at)}</span>
+                                    <span>·</span>
+                                    <span className="num">{formatBytes(report.size_bytes)}</span>
+                                  </div>
+                                </button>
+                                <button
+                                  className="shrink-0 rounded-md p-1.5 text-ink-500 opacity-0 transition-all group-hover:opacity-100 hover:bg-rose-500/15 hover:text-rose-400 focus-visible:opacity-100"
+                                  onClick={() => setPendingDelete(report.name)}
+                                  aria-label={`Delete ${report.name}`}
+                                  title="Delete report"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               )}
             </Card>
             <PluginSlot slot="reports.aside" className="mt-4" />

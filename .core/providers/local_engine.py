@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 from config import MODELS_DIR
 from engine_loader import EngineLoadError, load_engine_class
+from gguf import EMBEDDING, GENERATIVE, PROJECTOR, classify
 from .base import ModelInfo, Provider, ProviderError
 
 
@@ -44,11 +45,29 @@ class LocalEngineProvider(Provider):
     def list_models(self) -> List[ModelInfo]:
         discovered = self.runtime.discover_gguf_models(self.search_paths)
         self._model_index.clear()
+
         models: List[ModelInfo] = []
+        skipped: Dict[str, int] = {}
         for path in discovered:
+            # Vision projectors and embedding models are valid GGUF files that
+            # cannot answer a prompt. Offering them produced an empty report
+            # with no error, which read as the suite failing rather than the
+            # model being the wrong kind. UNKNOWN stays listed: only positive
+            # evidence should hide something.
+            kind = classify(path) if path.suffix == ".gguf" else GENERATIVE
+            if kind in (PROJECTOR, EMBEDDING):
+                skipped[kind] = skipped.get(kind, 0) + 1
+                continue
             model_id = self._register_model(path)
             models.append(ModelInfo(id=model_id, display_name=path.stem))
+
         if not models:
+            if skipped:
+                detail = ", ".join(f"{count} {kind}" for kind, count in sorted(skipped.items()))
+                raise ProviderError(
+                    f"No runnable models were found — the only GGUF files present are "
+                    f"{detail}, which cannot generate text. Add a chat or instruct model."
+                )
             raise ProviderError(
                 "No GGUF models were found. Place models inside the 'models' directory or set LOCAL_LLM_PATHS."
             )

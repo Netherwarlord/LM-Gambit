@@ -1,0 +1,7 @@
+{
+  "_comment": "Deliberately empty. Nothing in the language suite is reliably auto-checkable, and an unreliable key is worse than none - it fails correct answers with total confidence, which is the exact problem this grader exists to remove.",
+
+  "_test4_omitted": "The Winograd item looked checkable: the first `it` is the TROPHY (a trophy too large fails to fit; a suitcase too large would succeed), flipping to the SUITCASE on 'too small'. But correctness turns on which noun binds to which condition, in free prose, and both nouns necessarily appear in any answer. Every pattern tried also matched an inverted answer, because 'it would refer to the trophy instead' sits inside the counterfactual sentence. Left to human review.",
+
+  "_others_omitted": "Sentiment, entity extraction, semantic similarity, summarisation and translation are judgement calls. Pattern-matching them would manufacture false confidence."
+}

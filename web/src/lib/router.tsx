@@ -3,7 +3,8 @@
  *
  * The app has five top-level views and no data loaders, so a routing library
  * would be pure overhead. This gives real URLs, working back/forward buttons
- * and deep links (e.g. /reports/automated_report_Qwen.md) with no dependency.
+ * and deep links (e.g. /reports/Qwen3.5-9B__20260728-0318__all__26q.md) with
+ * no dependency.
  */
 
 import {

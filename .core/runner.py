@@ -46,6 +46,7 @@ def run_suite(
     temperature: Optional[float] = None,
     progress_callback: Optional[Callable[[int, int, Dict[str, str], Dict[str, object]], None]] = None,
     prompts: Optional[List[Dict[str, str]]] = None,
+    on_report_created: Optional[Callable[[Path], None]] = None,
 ) -> Path:
     """Run the diagnostic test suite and return the generated report path.
 
@@ -84,7 +85,15 @@ def run_suite(
     if not prompts:
         raise TestRunError("No test prompts found in the 'tests' directory.")
 
-    report_path = initialize_report_file(model.display_name)
+    # Scope comes straight from the prompts, so the report name always matches
+    # what actually ran — including a subset chosen in the UI.
+    suite_slugs = [str(p.get("suite", "")) for p in prompts]
+    report_path = initialize_report_file(model.display_name, suite_slugs, len(prompts))
+    if on_report_created is not None:
+        # The caller needs this before run_suite returns: a cancelled run still
+        # finalizes its partial report, and the path can no longer be
+        # reconstructed from the model name now that it carries a timestamp.
+        on_report_created(report_path)
     all_results: List[Dict[str, object]] = []
     selected_temperature = temperature if temperature is not None else DEFAULT_TEMPERATURE
 

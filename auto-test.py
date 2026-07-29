@@ -202,7 +202,10 @@ def _apply_plugins_to_report(report_path, records, grades, provider, model, star
     yields the same report.
     """
     plugins = get_plugin_manager()
-    label = report_path.stem.replace("automated_report_", "")
+    # The model is what the caller asked for. Deriving it from the filename was
+    # already fragile and is now wrong, since the name carries a timestamp,
+    # suite scope and question count as well.
+    label = model or report_path.stem.split("__", 1)[0]
 
     record = RunRecord(
         id=f"cli-{int(started_at)}",

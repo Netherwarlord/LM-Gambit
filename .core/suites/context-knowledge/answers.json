@@ -1,0 +1,19 @@
+{
+  "_comment": "Both keys derived by re-reading the supplied record, not from memory of designing it.",
+
+  "test1.txt": {
+    "note": "Sao Paulo opened 1993 under Mbeki, 12 years into her tenure. M-800 assembled in Eindhoven (the site in use since 1989). ISO suspension 2003, 10 years after Sao Paulo opened. Both events land in 2004. First non-European sale 1974 under Voss. The M-800 launch price is NOT in the record; Voss served 13 years (March 1968 to 1981).",
+    "must_contain": ["Mbeki", "Eindhoven", "Voss"],
+    "numbers": [12, 10, 2004, 1974, 13],
+    "regex": "(?i)(not|cannot|can't|un)\\s*(be\\s*)?determin|no(t)? (stated|given|recorded|available)|does not (say|state|give)",
+    "_reasoning": "Question 6 requires declining to give the M-800 price. The regex checks the answer says so rather than inventing a figure."
+  },
+
+  "test2.txt": {
+    "note": "Only sources A, B and C may be used. Source C invoices $5,780,000 with a further unresolved $310,000 claim, so the supported total is a 5.78M-6.09M range, not a single number.",
+    "numbers": [5780000, 310000],
+    "must_contain": ["A", "B", "C"],
+    "must_contain_any": ["range", "between", "6,090,000", "6.09"],
+    "_reasoning": "Reporting one total misrepresents the evidence; the range is the correct answer."
+  }
+}

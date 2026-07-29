@@ -22,14 +22,12 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 from .core_bridge import (
-    RESULTS_DIR,
     TemplateNotFoundError,
     TestRunError,
     append_sections,
     finalize_report_summary,
     replace_analysis_section,
     run_suite,
-    sanitize_model_name,
 )
 from .plugins import (
     GradeEntry,
@@ -122,6 +120,12 @@ class RunState:
     #: entire rubric from the prompt, so a collision yields confident,
     #: plausible, wrong scores with no error anywhere. Never key by filename.
     prompts_by_id: Dict[str, str] = field(default_factory=dict)
+    #: Set by the engine the moment the report file is created.
+    #:
+    #: Report names now carry a timestamp, so this can no longer be
+    #: reconstructed from the model label — three places used to rebuild it
+    #: independently, which silently pointed at the wrong file.
+    report_path: Optional[Path] = None
 
     @property
     def completed(self) -> int:
@@ -347,12 +351,16 @@ class RunManager:
         )
 
         try:
+            def _remember_report(path: Path) -> None:
+                run.report_path = path
+
             report_path = run_suite(
                 provider_name=run.provider,
                 model_id=run.model_id,
                 temperature=run.temperature,
                 progress_callback=progress_callback,
                 prompts=prompts,
+                on_report_created=_remember_report,
             )
         except RunCancelled:
             self._finalize_partial_report(run)
@@ -400,15 +408,12 @@ class RunManager:
 
     # ---------------------------------------------------------------- plugins
 
-    def _report_path(self, run: RunState) -> Path:
-        return RESULTS_DIR / f"automated_report_{sanitize_model_name(run.model_label)}.md"
-
     def _record(self, run: RunState):
-        path = self._report_path(run)
+        path = run.report_path
         return build_run_record(
             run,
             prompts_by_id=run.prompts_by_id,
-            report_path=path if path.exists() else None,
+            report_path=path if path and path.exists() else None,
         )
 
     def _grade(self, run: RunState, outcome: TestOutcome) -> None:
@@ -450,8 +455,8 @@ class RunManager:
 
     def _apply_plugin_report(self, run: RunState) -> None:
         """Write grades and plugin sections into the finished report."""
-        report_path = self._report_path(run)
-        if not report_path.exists():
+        report_path = run.report_path
+        if report_path is None or not report_path.exists():
             return
 
         record = self._record(run)
@@ -477,8 +482,8 @@ class RunManager:
 
     def _finalize_partial_report(self, run: RunState) -> None:
         """Write the summary block for a run that stopped early."""
-        report_path = RESULTS_DIR / f"automated_report_{sanitize_model_name(run.model_label)}.md"
-        if not report_path.exists():
+        report_path = run.report_path
+        if report_path is None or not report_path.exists():
             return
         results: List[Dict[str, Any]] = []
         for outcome in run.outcomes:

@@ -186,6 +186,10 @@ export interface ReportSummary {
   model_label: string
   size_bytes: number
   modified_at: number
+  /** Which suites the run covered. Empty for reports predating the scheme. */
+  suite_scope: string
+  /** How many questions it actually ran. Null for legacy reports. */
+  question_count: number | null
 }
 
 export interface ReportDetail extends ReportSummary {

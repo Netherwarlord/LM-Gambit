@@ -1,0 +1,42 @@
+{
+  "_comment": "Expected answers for objectively checkable questions. Every value here was recomputed with exact arithmetic (Fraction/Decimal) rather than recalled - see the verification step in the plan. A wrong key produces confident wrong grading, which is worse than no key at all, so anything not independently confirmed is simply omitted.",
+
+  "test1.txt": {
+    "note": "Arithmetic. 4827x396; 17.5% of 1840 minus 3/8 of 512; 3750mL/45mL; 68mph in m/s to 3dp; compound interest; successive discount.",
+    "numbers": [1911492, 130, 83, 15, 30.399, 13622.65, 44],
+    "_reasoning": "Q6's trap is answering 50%; the true equivalent discount is 44%, checked positively. A ban on '50%' was tried and removed - the prompt says 'Show why it is not 50%', so a correct answer contains that string by design. 30.399 matters: 30.39872 rounds up, and a key of 30.398 would fail correct work."
+  },
+
+  "test2.txt": {
+    "note": "Mixture: 2.5 L of 12% and 2.0 L of 30%. Boat: 14 km/h still water, 2 km/h current. Part 3 gives a negative current and is physically impossible.",
+    "numbers": [2.5, 2, 14],
+    "must_contain_any": ["impossible", "not physically", "cannot be", "inconsistent", "negative current", "no physical"],
+    "_reasoning": "Part 3 yields c = -4. Reporting -4 as a plain answer is the failure mode; naming it impossible is the pass."
+  },
+
+  "test3.txt": {
+    "note": "Definite integral of 2x/(x^2+1) over 0..2 is ln 5. Critical points of x^3-6x^2+9x+2 are x=1 (local max) and x=3 (local min).",
+    "must_contain_any": ["ln(5)", "ln 5", "ln5", "1.609"],
+    "numbers": [1, 3],
+    "must_contain": ["max", "min"]
+  },
+
+  "test4.txt": {
+    "note": "The buggy fib returns 2^(n-1) for n>=1 because `a = b` overwrites a before b is computed. Minimal fix is simultaneous assignment. After the fix range(n) is correct - there is NO second bug.",
+    "must_contain_any": ["a, b = b, a + b", "a, b = b, a+b", "simultaneous", "tuple assignment", "unpack"],
+    "regex": "(?i)(no (second|other|further|additional) (bug|issue|problem|error))|((there is|there's) none)|(correct as (is|written))",
+    "_reasoning": "Item 6 asks whether a second bug exists. It does not. Inventing one is the failure."
+  },
+
+  "test5.txt": {
+    "note": "top_k_frequent must beat a full sort: a bounded min-heap of size k gives O(n log k).",
+    "must_contain_any": ["heap", "heapq", "nlargest"],
+    "regex": "(?i)o\\(\\s*n\\s*log\\s*k\\s*\\)"
+  },
+
+  "test6.txt": {
+    "note": "The hidden third loop is the `[r['id'] for r in result]` comprehension re-scanning results inside the nested loop. Rewrite indexes by id.",
+    "must_contain_any": ["comprehension", "list comprehension", "not in [", "third loop", "hidden loop", "rescan", "re-scan"],
+    "regex": "(?i)(dict|hash|map|index|set)\\b"
+  }
+}

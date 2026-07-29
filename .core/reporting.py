@@ -1,8 +1,9 @@
 import hashlib
 import re
 import textwrap
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 from config import RESULTS_DIR, TEMPLATE_PATH, TEMP_DIR
 from markdown_linter import infer_language_from_prompt, lint_response_markdown
@@ -98,15 +99,68 @@ def sanitize_model_name(model_name: str) -> str:
     return sanitized or "unknown-model"
 
 
-def initialize_report_file(model_label: str) -> Path:
+def describe_scope(suite_slugs: Sequence[str]) -> str:
+    """A short, filename-safe label for which suites a run covered.
+
+    Kept to one token because the report name is validated against
+    ``[A-Za-z0-9._-]`` — a ``+``-joined list of slugs would be rejected, and
+    five slugs would be unreadable anyway. The exact suites are recorded inside
+    the report, where there is room for them.
+    """
+    unique = sorted({slug for slug in suite_slugs if slug})
+    if not unique:
+        return "adhoc"
+    if len(unique) == 1:
+        return sanitize_model_name(unique[0])
+    try:
+        from suites import builtin_slugs  # local import: avoids an import cycle
+
+        if set(unique) == builtin_slugs():
+            return "all"
+    except Exception:  # noqa: BLE001 - naming must never break a run
+        pass
+    return f"mixed{len(unique)}"
+
+
+def build_report_name(
+    model_label: str,
+    suite_slugs: Sequence[str] = (),
+    question_count: int = 0,
+    *,
+    when: Optional[datetime] = None,
+) -> str:
+    """``<model>__<timestamp>__<scope>__<n>q.md``.
+
+    Reports used to be named for the model alone, so every run overwrote the
+    last and nothing recorded what a file actually contained — a one-question
+    smoke test and a full 26-question benchmark were the same filename. The
+    timestamp keeps history; the scope and count make each file honest about
+    its own contents.
+    """
+    stamp = (when or datetime.now()).strftime("%Y%m%d-%H%M%S")
+    scope = describe_scope(suite_slugs)
+    return f"{sanitize_model_name(model_label)}__{stamp}__{scope}__{question_count}q.md"
+
+
+def initialize_report_file(
+    model_label: str,
+    suite_slugs: Sequence[str] = (),
+    question_count: int = 0,
+) -> Path:
     """Create the markdown report shell and return its path."""
-    sanitized = sanitize_model_name(model_label)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    report_path = RESULTS_DIR / f"automated_report_{sanitized}.md"
+    report_path = RESULTS_DIR / build_report_name(model_label, suite_slugs, question_count)
+
+    suites = ", ".join(f"`{slug}`" for slug in sorted({s for s in suite_slugs if s})) or "—"
+    generated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     header = textwrap.dedent(
         f"""
         # Automated Diagnostic Report: {model_label}
+
+        * **Suites:** {suites}
+        * **Questions:** {question_count}
+        * **Generated:** {generated}
 
         ---
 

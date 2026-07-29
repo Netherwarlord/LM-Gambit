@@ -1,4 +1,6 @@
-import { defineConfig } from 'vite'
+// defineConfig comes from vitest/config rather than vite so the `test` block
+// below type-checks; it is vite's own, widened with Vitest's options.
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -27,5 +29,12 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     chunkSizeWarningLimit: 900,
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    // Only our own tests; node_modules and the built bundle are not ours.
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })
