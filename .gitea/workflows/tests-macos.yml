@@ -1,0 +1,75 @@
+name: tests-macos
+
+# Separate from tests.yml on purpose. This runs on a laptop, and a laptop is
+# sometimes asleep. Keeping it in its own workflow means a queued macOS job
+# leaves *this* run pending instead of holding the main test result hostage.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    # Homebrew act_runner executes jobs directly on the host — there is no
+    # container. Change this label if the runner was registered with a
+    # different one; it has to match what the runner declared.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No setup-python / setup-node here, deliberately. Those actions install
+      # a toolchain into a container that does not exist in host mode. Using
+      # whatever Homebrew provides is also the better test: it is the
+      # environment an actual macOS user would have, rather than a pinned one
+      # nobody runs.
+      - name: Show toolchain
+        run: |
+          python3 --version
+          node --version
+          npm --version
+          uname -m
+
+      # A venv rather than --user: Homebrew's Python is externally managed
+      # (PEP 668), so a plain pip install into it is refused outright.
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv .ci-venv
+          .ci-venv/bin/python -m pip install --quiet --upgrade pip
+          .ci-venv/bin/python -m pip install -r requirements-ci.txt
+
+      # requirements-ci.txt omits llama-cpp-python, so this covers suite
+      # loading, grading, reporting and the HTTP surface — not inference.
+      # Exercising .apple_silicon needs model weights CI does not have, and
+      # remains a manual check.
+      - name: Run Python tests
+        run: .ci-venv/bin/python tests_py/run_all.py
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Type-check and build
+        working-directory: web
+        run: npm run build
+
+      - name: Run UI tests
+        working-directory: web
+        run: npm test
+
+      # Proves the shipped artifact actually works on macOS, which is a
+      # different claim from "it built". Catches launcher and layout problems
+      # that never show up in a source checkout.
+      - name: Smoke-test the packaged archive
+        run: |
+          .ci-venv/bin/python packaging/build.py --platform macos --skip-web
+          cd dist
+          tar xzf LM-Gambit-*-macos.tar.gz
+          cd LM-Gambit-*-macos
+          test -x LM-Gambit.sh || { echo "launcher is not executable"; exit 1; }
+          head -1 LM-Gambit.sh | grep -q '^#!/usr/bin/env bash$' || { echo "bad shebang"; exit 1; }
+          ../../.ci-venv/bin/python auto-test.py --suites
