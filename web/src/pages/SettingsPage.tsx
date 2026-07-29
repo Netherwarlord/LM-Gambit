@@ -213,6 +213,21 @@ export function SettingsPage() {
                   <dl className="space-y-2.5 text-[0.8125rem]">
                     <InfoRow label="Runtime" value={system.data.engine_runtime} mono />
                     <InfoRow label="Architecture" value={system.data.engine_architecture} />
+                    {/* Architecture is detected from hardware; this is what the
+                        installed binary can actually drive. The two disagreeing
+                        is the difference between a GPU working and sitting idle
+                        while the interface still says "cuda". */}
+                    {system.data.engine_gpu_offload !== null && (
+                      <InfoRow
+                        label="GPU offload"
+                        value={
+                          system.data.engine_gpu_offload
+                            ? 'Supported by this build'
+                            : 'Not in this build (CPU only)'
+                        }
+                        tone={system.data.engine_gpu_offload ? 'ok' : 'bad'}
+                      />
+                    )}
                     <InfoRow label="Platform" value={system.data.metrics.platform ?? '—'} />
                     <InfoRow label="Python" value={system.data.python_version} mono />
                     <InfoRow label="LM-Gambit" value={`v${system.data.version}`} mono />

@@ -102,7 +102,22 @@ export function Shell({ children, activeRun }: { children: ReactNode; activeRun:
       <div className="mt-1 truncate text-[0.75rem] font-medium text-ink-200" title={system.engine_runtime}>
         {system.engine_runtime}
       </div>
-      <div className="text-[0.6875rem] text-ink-500">{system.engine_architecture}</div>
+      <div className="text-[0.6875rem] text-ink-500">
+        {system.engine_architecture}
+        {/* The architecture alone is misleading when the installed
+            llama-cpp-python is a CPU build: it reports the hardware, not what
+            the binary can drive. Saying "CPU build" here is the difference
+            between a user seeing "cuda" and assuming the GPU is busy, and
+            knowing their card is idle. */}
+        {system.engine_gpu_offload === false && (
+          <span className="text-amber-400"> · CPU build</span>
+        )}
+      </div>
+      {system.engine_warning && (
+        <div className="mt-1.5 text-[0.6875rem] leading-snug text-amber-400">
+          {system.engine_warning}
+        </div>
+      )}
       {!system.template_ok && (
         <div className="mt-1.5 text-[0.6875rem] text-rose-400">Report template missing</div>
       )}

@@ -24,6 +24,8 @@ from .core_bridge import (
     ProviderError,
     build_provider,
     detect_architecture,
+    engine_warning,
+    gpu_offload_supported,
     list_provider_names,
     load_engine_class,
     load_settings,
@@ -87,10 +89,16 @@ async def get_system() -> SystemInfo:
     except EngineLoadError as exc:
         runtime_name = f"unavailable ({exc})"
 
+    # Computed after load_engine_class above, which already imports llama_cpp,
+    # so the probe costs nothing extra here.
+    offload = gpu_offload_supported()
+
     return SystemInfo(
         version=__version__,
         engine_architecture=descriptor.architecture,
         engine_runtime=runtime_name,
+        engine_gpu_offload=offload,
+        engine_warning=engine_warning(descriptor, offload=offload),
         template_ok=TEMPLATE_PATH.exists(),
         python_version=platform.python_version(),
         metrics={

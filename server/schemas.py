@@ -204,6 +204,13 @@ class SystemInfo(BaseModel):
     version: str
     engine_architecture: str
     engine_runtime: str
+    # None when llama-cpp-python is absent or too old to report it, which is a
+    # different thing from a confirmed False.
+    engine_gpu_offload: Optional[bool] = None
+    # Set when the detected hardware and the installed build disagree — the
+    # case where the interface would otherwise claim "cuda" while every token
+    # is generated on the CPU.
+    engine_warning: Optional[str] = None
     template_ok: bool
     python_version: str
     metrics: Dict[str, str] = {}

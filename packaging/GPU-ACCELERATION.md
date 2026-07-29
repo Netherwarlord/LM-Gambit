@@ -14,19 +14,21 @@ created `.venv`.
 
 ## NVIDIA (CUDA)
 
-Check your driver's CUDA version with `nvidia-smi`, then match it:
-
 ```bash
 # Windows
 .venv\Scripts\python -m pip install --force-reinstall --no-cache-dir \
   llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
 
-# macOS / Linux
+# Linux
 .venv/bin/python -m pip install --force-reinstall --no-cache-dir \
   llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
 ```
 
-Swap `cu124` for `cu121` or `cu122` if your driver is older.
+Use `cu124` unless you have a reason not to. It and `cu125` carry current
+builds; `cu121` through `cu123` stopped at 0.3.4 and are far behind. You do
+**not** need to match your driver's CUDA version exactly — CUDA drivers are
+backward compatible, so a 13.x driver runs a cu124 build without complaint.
+Older than CUDA 12.4 is the only case where dropping back helps.
 
 ## Apple Silicon (Metal)
 
@@ -53,11 +55,30 @@ CMAKE_ARGS="-DGGML_HIPBLAS=on" .venv/bin/python -m pip install \
 
 ## Confirming it worked
 
-Start LM-Gambit and look at the **Engine** panel in the bottom-left. It reports
-the detected architecture. Then run one question and compare tokens/second
-against what you saw before — that number is the real test.
+Start LM-Gambit and open **Settings → Engine**. The row that answers this is
+**GPU offload**:
 
-A caveat worth knowing: the engine detects your *hardware*, not what
-`llama-cpp-python` was built with. On an NVIDIA machine it will report `cuda`
-even with a CPU wheel installed. If the architecture says `cuda` but throughput
-is unchanged, the wheel is still the CPU one.
+- *Supported by this build* — the installed binary can drive your GPU.
+- *Not in this build (CPU only)* — it cannot, whatever the architecture says.
+
+The **Architecture** row above it is detected from your *hardware* and will
+happily read `cuda` on any machine with an NVIDIA driver, including one running
+an entirely CPU-only build. It is not evidence of anything. When the two
+disagree the sidebar also shows a warning, and the Engine chip appends
+`· CPU build`.
+
+Then run one question and watch the numbers. On CPU you should expect roughly
+10–13 tok/s for a mid-size quantised model; a discrete GPU is several times
+that. If throughput did not move after installing a GPU wheel, the install did
+not take — check for an error in the pip output, since a failed
+`--force-reinstall` leaves the previous build in place.
+
+The blunt external check, run while a question is generating:
+
+```bash
+nvidia-smi
+```
+
+Your Python process should appear in the process list holding VRAM. If the list
+shows only desktop software and utilisation sits at 0%, nothing is reaching the
+card.

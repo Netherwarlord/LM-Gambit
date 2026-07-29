@@ -214,6 +214,12 @@ export interface SystemInfo {
   version: string
   engine_architecture: string
   engine_runtime: string
+  /** Whether the installed llama-cpp-python was built with GPU offload.
+   *  null when llama-cpp-python is missing or too old to report it — which is
+   *  distinct from a confirmed false. */
+  engine_gpu_offload: boolean | null
+  /** Set when detected hardware and the installed build disagree. */
+  engine_warning: string | null
   template_ok: boolean
   python_version: string
   metrics: Record<string, string>

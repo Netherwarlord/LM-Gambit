@@ -30,6 +30,8 @@ from config import (  # type: ignore[import-not-found]
 from engine_loader import (  # type: ignore[import-not-found]
     EngineLoadError,
     detect_architecture,
+    engine_warning,
+    gpu_offload_supported,
     load_engine_class,
 )
 from prompts import load_test_prompts  # type: ignore[import-not-found]
@@ -77,6 +79,8 @@ __all__ = [
     "DEFAULT_PROVIDER_NAME",
     "EngineLoadError",
     "detect_architecture",
+    "engine_warning",
+    "gpu_offload_supported",
     "load_engine_class",
     "DEFAULT_TEMPERATURE",
     "MODELS_DIR",

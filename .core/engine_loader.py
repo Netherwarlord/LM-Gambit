@@ -65,7 +65,17 @@ class EngineDescriptor:
         return f"engine_{self.architecture}_{self.version}"
 
 
+#: Architectures whose runtimes ask llama.cpp to offload layers to a GPU.
+GPU_ARCHITECTURES = frozenset({"cuda", "rocm", "apple_silicon"})
+
+
 def detect_architecture() -> EngineDescriptor:
+    """Which engine runtime this *hardware* calls for.
+
+    This looks at drivers and CPU family only. It deliberately says nothing
+    about whether the installed llama-cpp-python can actually use that
+    hardware — see gpu_offload_supported() for that half.
+    """
     system = platform.system().lower()
     machine = platform.machine().lower()
 
@@ -79,6 +89,58 @@ def detect_architecture() -> EngineDescriptor:
         return EngineDescriptor("rocm")
 
     return EngineDescriptor("cpu")
+
+
+def gpu_offload_supported() -> Optional[bool]:
+    """Whether the installed llama-cpp-python was *built* with GPU offload.
+
+    Detection and capability are two different questions, and they routinely
+    disagree. llama-cpp-python compiles its backend in at install time and the
+    default wheel is CPU-only, so a machine with an RTX card is detected as
+    "cuda", loads the CUDA runtime, sets n_gpu_layers=-1 — and then generates
+    every token on the CPU, because the binary has no CUDA in it. Nothing
+    errors. The card sits at 0% while the interface reports "cuda".
+
+    llama_supports_gpu_offload() answers the question the detection cannot:
+    it reports what the binary can do, not what the machine has.
+
+    Returns None when the answer is unknowable — llama_cpp missing, or too old
+    to expose the symbol — so callers can distinguish "no" from "cannot tell".
+    """
+    try:
+        import llama_cpp
+    except Exception:
+        return None
+
+    probe = getattr(llama_cpp, "llama_supports_gpu_offload", None)
+    if probe is None:
+        return None
+
+    try:
+        return bool(probe())
+    except Exception:
+        return None
+
+
+def engine_warning(
+    descriptor: Optional[EngineDescriptor] = None,
+    *,
+    offload: Optional[bool] = None,
+) -> Optional[str]:
+    """A human-readable warning when hardware and build disagree, else None."""
+    descriptor = descriptor or detect_architecture()
+    if descriptor.architecture not in GPU_ARCHITECTURES:
+        return None
+
+    offload = gpu_offload_supported() if offload is None else offload
+    if offload is False:
+        return (
+            f"{descriptor.architecture} hardware was detected, but the installed "
+            "llama-cpp-python is a CPU-only build, so the GPU will sit idle and "
+            "generation will run on the CPU. See GPU-ACCELERATION.md to install "
+            "a matching wheel."
+        )
+    return None
 
 
 def load_engine_class(descriptor: Optional[EngineDescriptor] = None) -> Type["BaseRuntime"]:
