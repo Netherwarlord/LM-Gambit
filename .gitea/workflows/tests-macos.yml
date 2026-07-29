@@ -16,9 +16,14 @@ concurrency:
 jobs:
   macos:
     # Homebrew act_runner executes jobs directly on the host — there is no
-    # container. Change this label if the runner was registered with a
-    # different one; it has to match what the runner declared.
-    runs-on: macos-latest
+    # container.
+    #
+    # Cased exactly as the runner declared it. Gitea compares runs-on against
+    # the registered label string, and rather than depend on that comparison
+    # being case-insensitive, matching the declaration is guaranteed either way.
+    # The runner also carries Apple-Silicon if a job ever needs to be specific
+    # about the architecture rather than the OS.
+    runs-on: MacOS-Latest
     steps:
       - uses: actions/checkout@v4
 
